@@ -55,22 +55,39 @@ def save_comments_to_csv(comments, filename):
     """保存评论"""
     os.makedirs(os.path.dirname(filename), exist_ok=True)
     file_exists = os.path.isfile(filename)
-    
-    with open(filename, mode='a', encoding='utf-8-sig', newline='') as f:
+
+    # 尝试打开目标文件；如果被占用（例如 Excel 已经打开该 CSV），回退到带时间戳的备用文件
+    try:
+        f = open(filename, mode='a', encoding='utf-8-sig', newline='')
+        opened_filename = filename
+    except PermissionError:
+        # 生成备份文件名
+        ts = time.strftime('%Y%m%d_%H%M%S')
+        base, ext = os.path.splitext(filename)
+        alt_filename = f"{base}_{ts}{ext}"
+        print(f"⚠️ 无法写入目标文件（可能被占用）。改写入备用文件: {alt_filename}")
+        f = open(alt_filename, mode='a', encoding='utf-8-sig', newline='')
+        opened_filename = alt_filename
+
+    with f:
         writer = csv.writer(f)
         if not file_exists:
-            writer.writerow(['rpid', 'username', 'content', 'likes', 'date'])
+            # 表头
+            writer.writerow(['content', 'username', 'time', 'ip_location', 'user_level', 'likes'])
         
         count = 0
         if not comments: return 0
         for c in comments:
             if not c: continue
-            rpid = c['rpid']
-            uname = c['member']['uname']
             content = c['content']['message']
-            likes = c['like']
+            username = c['member']['uname']
             ctime = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(c['ctime']))
-            writer.writerow([rpid, uname, content, likes, ctime])
+            location = c.get('reply_control', {}).get('location', '')
+            if location:
+                location = location.replace('IP属地：', '')
+            user_level = c['member']['level_info']['current_level']
+            likes = c['like']
+            writer.writerow([content, username, ctime, location, user_level, likes])
             count += 1
         return count
 
@@ -161,12 +178,17 @@ def save_danmaku_to_csv(danmaku_list, filename):
 
 # ==================== 主程序 ====================
 if __name__ == "__main__":
+    # 运行时输入 BV 号（可选，默认使用 config 中的值）
+    bv_code = input("请输入 BV 号（按Enter使用默认值: " + config.BV_CODE + "）：").strip()
+    if not bv_code:
+        bv_code = config.BV_CODE
+    
     print("=======================================")
-    print(f"🎯 目标 BV 号: {config.BV_CODE}")
+    print(f"🎯 目标 BV 号: {bv_code}")
     print("=======================================")
     
     # 1. 获取基础信息
-    video_info = get_video_info(config.BV_CODE)
+    video_info = get_video_info(bv_code)
     if not video_info:
         exit()
     
@@ -177,14 +199,24 @@ if __name__ == "__main__":
     # 2. 用户选择
     print("\n请选择要爬取的内容：")
     print("1. 📝 评论 (Comments)")
-    print("2. 🚀 弹幕 (Danmaku - 爬取当前最新池子)")
+    print("2. 🚀 弹幕 (Danmaku)")
     choice = input("👉 请输入数字 (1 或 2): ").strip()
     
     if choice == '1':
         # ----- 爬评论 -----
+        max_pages = input(f"请输入爬取页数（按Enter使用默认值: {config.MAX_COMMENT_PAGES}）：").strip()
+        if max_pages:
+            try:
+                max_pages = int(max_pages)
+            except ValueError:
+                print(f"⚠️ 输入无效，使用默认值 {config.MAX_COMMENT_PAGES}")
+                max_pages = config.MAX_COMMENT_PAGES
+        else:
+            max_pages = config.MAX_COMMENT_PAGES
+        
         print("\n--- 开始爬取评论 ---")
         total_saved = 0
-        for page in range(1, config.MAX_COMMENT_PAGES + 1):
+        for page in range(1, max_pages + 1):
             print(f"📄 第 {page} 页...")
             replies = fetch_comments(oid, page)
             if not replies:
@@ -203,11 +235,20 @@ if __name__ == "__main__":
         danmaku_list = crawl_danmaku_xml(cid)
         
         if danmaku_list:
+            max_count = input(f"请输入爬取条数限制（上限 {len(danmaku_list)} 条，按Enter使用最大值）：").strip()
+            if max_count:
+                try:
+                    max_count = int(max_count)
+                    danmaku_list = danmaku_list[:max_count]
+                except ValueError:
+                    print(f"⚠️ 输入无效，使用上限 {len(danmaku_list)} 条")
+            
             count = save_danmaku_to_csv(danmaku_list, filename=config.DANMAKU_SAVE_PATH)
             print(f"\n🎉 弹幕爬取结束！共 {count} 条。")
             print(f"📂 保存路径: {config.DANMAKU_SAVE_PATH}")
         else:
             print("⚠️ 未爬取到弹幕，可能是弹幕池为空或网络问题。")
+            
             
     else:
         print("❌ 输入无效，程序退出。")
