@@ -4,26 +4,35 @@ import csv
 import random
 import re
 import os
-# 导入刚才写的配置文件
+import json
+# 导入配置文件
 import config 
 
-def get_oid(bv):
-    """通过BV号获取视频的数字ID(oid)"""
+def get_video_info(bv):
+    """通过BV号获取 oid (aid) 和 cid"""
     url = f"https://www.bilibili.com/video/{bv}"
     try:
-        # 直接使用 config.HEADERS
         resp = requests.get(url, headers=config.HEADERS)
-        match = re.search(r'"aid":(\d+)', resp.text)
-        if match:
-            return match.group(1)
+        # 正则提取 aid (即 oid)
+        aid_match = re.search(r'"aid":(\d+)', resp.text)
+        # 正则提取 cid (弹幕要用到)
+        cid_match = re.search(r'"cid":(\d+)', resp.text)
+        
+        if aid_match and cid_match:
+            return {
+                "oid": aid_match.group(1),
+                "cid": cid_match.group(1)
+            }
         else:
-            print("❌ 找不到 oid，请检查 BV 号或 Cookie。")
+            print("❌ 找不到 oid 或 cid，请检查 BV 号或 Cookie。")
             return None
     except Exception as e:
         print(f"❌ 网络请求错误: {e}")
         return None
 
+# ==================== 评论爬取部分 ====================
 def fetch_comments(oid, page):
+    """获取单页评论"""
     url = "https://api.bilibili.com/x/v2/reply"
     params = {
         "type": 1,
@@ -37,18 +46,16 @@ def fetch_comments(oid, page):
         data = resp.json()
         if data['code'] == 0:
             return data['data']['replies']
-        else:
-            # 有时候虽然code非0，但也可能只是没评论了
-            return None
+        return None
     except Exception as e:
-        print(f"❌ 获取第 {page} 页失败: {e}")
+        print(f"❌ 获取评论第 {page} 页失败: {e}")
         return None
 
-def save_to_csv(comments, filename):
-    # 自动创建目录
+def save_comments_to_csv(comments, filename):
+    """保存评论"""
     os.makedirs(os.path.dirname(filename), exist_ok=True)
-    
     file_exists = os.path.isfile(filename)
+    
     with open(filename, mode='a', encoding='utf-8-sig', newline='') as f:
         writer = csv.writer(f)
         if not file_exists:
@@ -56,7 +63,6 @@ def save_to_csv(comments, filename):
         
         count = 0
         if not comments: return 0
-        
         for c in comments:
             if not c: continue
             rpid = c['rpid']
@@ -68,28 +74,140 @@ def save_to_csv(comments, filename):
             count += 1
         return count
 
-if __name__ == "__main__":
-    print("🕷️ 评论爬虫启动...")
-    print(f"🎯 目标BV: {config.BV_CODE}")
-    
-    oid = get_oid(config.BV_CODE)
-    if not oid: exit()
-    
-    total_saved = 0
-    
-    for page in range(1, config.MAX_COMMENT_PAGES + 1):
-        print(f"📄 正在爬取第 {page} 页...")
-        replies = fetch_comments(oid, page)
+# ==================== 弹幕爬取部分 ====================
+def fetch_danmaku(cid, date):
+    """获取指定日期的历史弹幕"""
+    # B站历史弹幕接口 (返回JSON，比XML好处理)
+    url = "https://api.bilibili.com/x/v2/dm/web/history/seg.so"
+    params = {
+        "type": 1,
+        "oid": cid,
+        "date": date
+    }
+    try:
+        print(f"📡 正在请求 {date} 的弹幕...")
+        resp = requests.get(url, params=params, headers=config.HEADERS)
         
-        if not replies:
-            print("⚠️ 本页无数据或已爬完，停止。")
-            break
+        # 注意：如果 Cookie 失效或非会员，这个接口可能返回空或乱码
+        # 历史弹幕接口返回的是二进制 protobuf 或者是特殊编码，简单处理可以用 web 接口
+        # 这里尝试用更简单的 web 接口，如果不行则建议用 xml 接口
+        # 备用方案：普通弹幕池 https://comment.bilibili.com/{cid}.xml (XML格式)
+        # 但为了统一 CSV 格式，我们尝试解析 JSON 格式的历史接口（需要正确 Cookie）
+        
+        # 如果直接返回了 JSON 文本
+        try:
+            data = resp.json()
+            if data.get('code') != 0:
+                print(f"⚠️ 接口报错: {data.get('message')}")
+                return None
+            return data['data']['dm']
+        except:
+            print("⚠️ 响应不是标准JSON，尝试使用 XML 接口或检查 Cookie 权限")
+            return None
             
-        # 使用 config 里配置好的保存路径
-        saved_count = save_to_csv(replies, filename=config.COMMENT_SAVE_PATH)
-        total_saved += saved_count
+    except Exception as e:
+        print(f"❌ 获取弹幕失败: {e}")
+        return None
+
+def crawl_danmaku_xml(cid):
+    """备用：爬取当前弹幕池 (XML接口，不需要特定日期，比较稳定)"""
+    url = f"https://comment.bilibili.com/{cid}.xml"
+    try:
+        resp = requests.get(url, headers=config.HEADERS)
+        resp.encoding = 'utf-8'
+        # 简单的正则提取，不想引入 lxml 库增加复杂度
+        # 格式: <d p="...25.87400,1,25,16777215,1670000000,0,0,0">弹幕内容</d>
+        # p属性: 时间,模式,字体,颜色,时间戳,连接池,用户ID,行ID
+        patterns = re.findall(r'<d p="([^"]+)">([^<]+)</d>', resp.text)
         
-        time.sleep(random.uniform(1.5, 3.5))
+        results = []
+        for p_attr, content in patterns:
+            attrs = p_attr.split(',')
+            video_time = float(attrs[0]) # 视频内时间
+            date_time = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(int(attrs[4])))
+            uid = attrs[6] # 用户Hash
+            results.append({
+                'time': video_time,
+                'date': date_time,
+                'uid': uid,
+                'content': content
+            })
+        return results
+    except Exception as e:
+        print(f"❌ XML 解析失败: {e}")
+        return []
+
+def save_danmaku_to_csv(danmaku_list, filename):
+    os.makedirs(os.path.dirname(filename), exist_ok=True)
+    file_exists = os.path.isfile(filename)
     
-    print(f"\n🎉 结束！共保存 {total_saved} 条评论。")
-    print(f"📂 文件路径: {config.COMMENT_SAVE_PATH}")
+    with open(filename, mode='a', encoding='utf-8-sig', newline='') as f:
+        writer = csv.writer(f)
+        if not file_exists:
+            writer.writerow(['video_time', 'real_time', 'content', 'user_hash'])
+        
+        count = 0
+        for d in danmaku_list:
+            # 这里兼容一下 fetch_danmaku 和 crawl_danmaku_xml 的返回格式
+            # 如果是用 XML 爬的：
+            writer.writerow([
+                f"{d['time']:.2f}", 
+                d['date'], 
+                d['content'], 
+                d['uid']
+            ])
+            count += 1
+        return count
+
+# ==================== 主程序 ====================
+if __name__ == "__main__":
+    print("=======================================")
+    print(f"🎯 目标 BV 号: {config.BV_CODE}")
+    print("=======================================")
+    
+    # 1. 获取基础信息
+    video_info = get_video_info(config.BV_CODE)
+    if not video_info:
+        exit()
+    
+    oid = video_info['oid']
+    cid = video_info['cid']
+    print(f"✅ 视频信息获取成功 [OID: {oid} | CID: {cid}]")
+    
+    # 2. 用户选择
+    print("\n请选择要爬取的内容：")
+    print("1. 📝 评论 (Comments)")
+    print("2. 🚀 弹幕 (Danmaku - 爬取当前最新池子)")
+    choice = input("👉 请输入数字 (1 或 2): ").strip()
+    
+    if choice == '1':
+        # ----- 爬评论 -----
+        print("\n--- 开始爬取评论 ---")
+        total_saved = 0
+        for page in range(1, config.MAX_COMMENT_PAGES + 1):
+            print(f"📄 第 {page} 页...")
+            replies = fetch_comments(oid, page)
+            if not replies:
+                print("⚠️ 本页无数据或已爬完。")
+                break
+            saved_count = save_comments_to_csv(replies, filename=config.COMMENT_SAVE_PATH)
+            total_saved += saved_count
+            time.sleep(random.uniform(1.5, 3.5))
+        print(f"\n🎉 评论爬取结束！共 {total_saved} 条。")
+        print(f"📂 保存路径: {config.COMMENT_SAVE_PATH}")
+
+    elif choice == '2':
+        # ----- 爬弹幕 -----
+        print("\n--- 开始爬取弹幕 ---")
+        # 这里使用 XML 接口，因为它最稳定，不需要太复杂的 Cookie 权限也能跑
+        danmaku_list = crawl_danmaku_xml(cid)
+        
+        if danmaku_list:
+            count = save_danmaku_to_csv(danmaku_list, filename=config.DANMAKU_SAVE_PATH)
+            print(f"\n🎉 弹幕爬取结束！共 {count} 条。")
+            print(f"📂 保存路径: {config.DANMAKU_SAVE_PATH}")
+        else:
+            print("⚠️ 未爬取到弹幕，可能是弹幕池为空或网络问题。")
+            
+    else:
+        print("❌ 输入无效，程序退出。")
