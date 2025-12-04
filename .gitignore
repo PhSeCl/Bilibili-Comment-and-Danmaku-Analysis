@@ -1,3 +1,4 @@
 data/raw/comments.csv
 data/raw/danmaku.csv
 .idea/
+src/analysis/test.*

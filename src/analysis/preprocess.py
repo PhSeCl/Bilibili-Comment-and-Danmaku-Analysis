@@ -14,14 +14,14 @@ from transformers import AutoTokenizer
 # 这些默认值可以在命令行中被覆盖
 DEFAULT_MODEL_ID = "bert-base-chinese"
 DEFAULT_MAX_LEN = 128
-OUTPUT_BASE_DIR = "data/processed"
+OUTPUT_BASE_DIR = "../../data/processed"
 TEST_SIZE = 0.2
 RANDOM_STATE = 42
 # ===================================
 
 def parse_args():
     parser = argparse.ArgumentParser(description="数据预处理脚本")
-    parser.add_argument("--input", type=str, default="data/raw/comments.csv", help="原始 CSV 文件路径")
+    parser.add_argument("--input", type=str, default="../../data/raw/comments.csv", help="原始 CSV 文件路径")
     parser.add_argument("--type", type=str, default="comment", choices=["comment", "danmaku"], help="数据类型: comment 或 danmaku")
     parser.add_argument("--model", type=str, default=DEFAULT_MODEL_ID, help="HuggingFace 模型 ID")
     return parser.parse_args()
