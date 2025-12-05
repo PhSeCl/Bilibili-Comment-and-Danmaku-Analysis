@@ -8,6 +8,24 @@ import json
 # 导入配置文件
 import config 
 
+def check_cookie():
+    """检查 Cookie 是否有效"""
+    url = "https://api.bilibili.com/x/web-interface/nav"
+    try:
+        print("🍪 正在检查 Cookie 状态...")
+        resp = requests.get(url, headers=config.HEADERS)
+        data = resp.json()
+        if data.get('code') == 0 and data.get('data', {}).get('isLogin'):
+            print(f"✅ Cookie 有效，当前用户: {data['data']['uname']}")
+            return True
+        else:
+            print("⚠️ Cookie 已失效或未登录！")
+            print("   (这可能会导致无法获取历史弹幕，或触发风控验证码)")
+            return False
+    except Exception as e:
+        print(f"⚠️ 检查 Cookie 时发生网络异常: {e}")
+        return False
+
 def get_video_info(bv):
     """通过BV号获取 oid (aid) 和 cid"""
     url = f"https://www.bilibili.com/video/{bv}"
@@ -178,12 +196,15 @@ def save_danmaku_to_csv(danmaku_list, filename):
 
 # ==================== 主程序 ====================
 if __name__ == "__main__":
+    # 0. 检查 Cookie (新增功能)
+    check_cookie()
+    print("=======================================")
+
     # 运行时输入 BV 号（可选，默认使用 config 中的值）
     bv_code = input("请输入 BV 号（按Enter使用默认值: " + config.BV_CODE + "）：").strip()
     if not bv_code:
         bv_code = config.BV_CODE
     
-    print("=======================================")
     print(f"🎯 目标 BV 号: {bv_code}")
     print("=======================================")
     
