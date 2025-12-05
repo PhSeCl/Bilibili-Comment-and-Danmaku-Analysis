@@ -1,33 +1,37 @@
 # train_trainer.py
 import os
 import numpy as np
-from datasets import load_dataset
+from pathlib import Path
+from datasets import load_from_disk
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, TrainingArguments, Trainer, DataCollatorWithPadding
 from sklearn.metrics import f1_score, accuracy_score
 
-MODEL_ID = "hfl/chinese-roberta-wwm-ext"   # or "hfl/chinese-roberta-wwm-ext"
-OUTPUT_DIR = "./trained_models"
+# 自动找到项目根目录
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+DATA_PROCESSED_DIR = PROJECT_ROOT / "data" / "processed"
+
+MODEL_ID = "hfl/chinese-roberta-wwm-ext"
+OUTPUT_DIR = str(PROJECT_ROOT / "trained_models")
 
 # 超参（可按需调整）
 NUM_LABELS = 8
 BATCH = 16
 EPOCHS = 4      #训练轮数
 LR = 3e-5       #学习率
+DATA_TYPE = "comment"  # 对应 preprocess.py 生成的数据集名称
 
 tokenizer = AutoTokenizer.from_pretrained(MODEL_ID)
 
-def preprocess_function(examples):
-    return tokenizer(examples["content"], truncation=True)
+# 直接加载 preprocess.py 生成的数据集
+dataset_path = DATA_PROCESSED_DIR / f"{DATA_TYPE}_tokenized_dataset"
+print(f"📁 加载数据集: {dataset_path}")
 
-# 加载 CSV（确保 CSV 有 content,label 列）
-data_files = {"train":"data/processed/train.csv","validation":"data/processed/dev.csv"}
-raw_datasets = load_dataset("csv", data_files=data_files)
+if not dataset_path.exists():
+    print(f"❌ 数据集不存在: {dataset_path}")
+    print(f"请先运行: python src/analysis/preprocess.py")
+    exit(1)
 
-# tokenization
-tokenized = raw_datasets.map(preprocess_function, batched=True)
-# 设置 format
-tokenized = tokenized.map(lambda x: {"labels": x["label"]}, batched=True)
-tokenized.set_format(type="torch", columns=["input_ids","token_type_ids","attention_mask","labels"])
+tokenized = load_from_disk(str(dataset_path))
 
 model = AutoModelForSequenceClassification.from_pretrained(MODEL_ID, num_labels=NUM_LABELS)
 

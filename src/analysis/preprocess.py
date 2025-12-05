@@ -30,6 +30,7 @@ def parse_args():
     parser.add_argument("--type", type=str, default="comment", choices=["comment", "danmaku"], 
                         help="数据类型: comment 或 danmaku")
     parser.add_argument("--model", type=str, default=DEFAULT_MODEL_ID, help="HuggingFace 模型 ID")
+    parser.add_argument("--num_labels", type=int, default=8, help="分类标签数")
     return parser.parse_args()
 
 def detect_header_row(filepath):
@@ -69,6 +70,7 @@ def parse_time(s: str):
 
 def main():
     args = parse_args()
+    NUM_LABELS = args.num_labels  # 获取标签数
     
     print(f"🚀 开始预处理: {args.input} (类型: {args.type})")
     
@@ -95,6 +97,13 @@ def main():
     else:
         print("❌ 找不到 content 列！请检查 CSV 表头。")
         return
+
+    # 处理标签列（如果有的话）
+    if 'label' in df.columns:
+        new_df['label'] = df['label'].astype(int)
+    else:
+        print("⚠️  未找到 label 列，使用随机标签进行演示")
+        new_df['label'] = np.random.randint(0, NUM_LABELS, len(df))
 
     # 类型特定列处理
     if args.type == 'comment':
@@ -192,8 +201,8 @@ def main():
     val_df = val_df.reset_index(drop=True)
 
     # 7. 转为 HF Dataset 并 Tokenize
-    ds_train = Dataset.from_pandas(train_df[["content", "extra", "username"]])
-    ds_val = Dataset.from_pandas(val_df[["content", "extra", "username"]])
+    ds_train = Dataset.from_pandas(train_df[["content", "extra", "username", "label"]])
+    ds_val = Dataset.from_pandas(val_df[["content", "extra", "username", "label"]])
     ds = DatasetDict({"train": ds_train, "validation": ds_val})
 
     print("⏳ 正在 Tokenize (使用模型: {})...".format(args.model))
@@ -202,10 +211,11 @@ def main():
     def tokenize_fn(examples):
         out = tokenizer(examples["content"], truncation=True, max_length=DEFAULT_MAX_LEN)
         out["extra"] = examples["extra"]
+        out["labels"] = examples["label"]  # 转换为 "labels"（模型训练需要）
         out["username"] = examples.get("username", [""] * len(examples["content"]))
         return out
 
-    remove_cols = ["content", "extra", "username"]
+    remove_cols = ["content", "extra", "username", "label"]
     # 某些版本 datasets 可能需要 remove_columns 参数来清除原始文本列以节省空间
     tokenized = ds.map(tokenize_fn, batched=True, remove_columns=remove_cols)
 
