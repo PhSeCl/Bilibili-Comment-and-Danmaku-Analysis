@@ -3,6 +3,10 @@ data/raw/danmaku.csv
 .idea/
 src/analysis/test.*
 
+# 忽略 Python 编译缓存
+__pycache__/
+*.pyc
+
 
 # 忽略处理后的数据集文件夹 (通常很大，里面有很多 .arrow 文件)
 *_tokenized_dataset/
