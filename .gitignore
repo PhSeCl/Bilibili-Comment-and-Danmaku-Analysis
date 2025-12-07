@@ -6,3 +6,6 @@ src/analysis/test.*
 
 # 忽略处理后的数据集文件夹 (通常很大，里面有很多 .arrow 文件)
 *_tokenized_dataset/
+
+# 忽略所有临时生成的 JSON 映射文件
+*_loc2id.json
