@@ -2,6 +2,9 @@
 
 本项目是中山大学人工智能学院数据分析实践课程的大作业，该项目的内容是基于提供的数据集进行数据分析和可视化展示。
 
+## 📂 项目结构
+
+```text
 Bilibili-Comment-Analysis/ (根目录)
 ├── data/                        # 存放数据文件
 │   ├── raw/                     # 原始数据
@@ -44,6 +47,7 @@ Bilibili-Comment-Analysis/ (根目录)
 ├── demo_emotion_timeline.py     # [演示] 时间序列分析脚本
 ├── README.md                    # 项目说明书
 └── requirements.txt             # 依赖包列表
+```
 
 ---
 
