@@ -16,3 +16,6 @@ __pycache__/
 
 # 忽略跑demo生成的png
 *.png
+
+# 暂时忽略.csv文件用于人工上label，完成之后再删除该行
+*.csv
