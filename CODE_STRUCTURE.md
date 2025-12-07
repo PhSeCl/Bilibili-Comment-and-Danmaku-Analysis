@@ -370,6 +370,8 @@ python src/analysis/preprocess.py
 
 ### 3. 运行可视化演示
 ```bash
+# Note: Run from the project root directory
+cd /path/to/Bilibili-Comment-Analysis
 python demo_emotion_distribution.py
 python demo_emotion_timeline.py
 ```

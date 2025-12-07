@@ -182,8 +182,9 @@ content,username,time,ip_location,user_level,likes
 ### 1. 随机标签问题（已识别）
 **现象**: 原始数据没有情感标签，预处理时使用`np.random.randint(0, 8)`生成随机标签
 
-**代码位置**: `src/analysis/preprocess.py:106`
+**代码位置**: `src/analysis/preprocess.py` 中的标签生成逻辑
 ```python
+# 在 preprocess.py 的 main() 函数中
 if 'label' in df.columns:
     new_df['label'] = df['label'].astype(int)
 else:
@@ -206,8 +207,9 @@ else:
 - 建议添加pytest测试用例
 
 ### 4. 中文字体配置
-**代码位置**: `src/visualization/distribution.py:12`
+**代码位置**: `src/visualization/distribution.py` 中的matplotlib配置
 ```python
+# 设置中文字体
 mpl.rcParams['font.sans-serif'] = ['SimHei', 'DejaVu Sans']
 ```
 

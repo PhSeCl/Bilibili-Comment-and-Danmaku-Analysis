@@ -178,8 +178,12 @@ def main():
                 print(f"   {code}: {zh_label:12} ({label:20}) - {color}")
         else:
             print(f"❌ EMOTION_MAP应包含8个类别，实际: {len(EMOTION_MAP)}")
-    except Exception as e:
+    except ImportError as e:
+        total_checks += 1
         print(f"❌ 无法导入EMOTION_MAP: {e}")
+    except Exception as e:
+        total_checks += 1
+        print(f"❌ 检查EMOTION_MAP时出错: {e}")
     
     # 7. 检查SENTIMENT_WEIGHTS定义
     print("\n⚖️  检查情感权重表...")
@@ -196,8 +200,12 @@ def main():
                 print(f"   {code}: {weight:+.1f}")
         else:
             print(f"❌ SENTIMENT_WEIGHTS应包含8个权重，实际: {len(SENTIMENT_WEIGHTS)}")
-    except Exception as e:
+    except ImportError as e:
+        total_checks += 1
         print(f"❌ 无法导入SENTIMENT_WEIGHTS: {e}")
+    except Exception as e:
+        total_checks += 1
+        print(f"❌ 检查SENTIMENT_WEIGHTS时出错: {e}")
     
     # 8. 统计信息
     print("\n" + "="*60)
