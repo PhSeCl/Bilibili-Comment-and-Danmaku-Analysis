@@ -2,41 +2,48 @@
 
 本项目是中山大学人工智能学院数据分析实践课程的大作业，该项目的内容是基于提供的数据集进行数据分析和可视化展示。
 
-## 📂 项目结构
-
-```text
-Bilibili-Emotion-Analysis/ (根目录)
-├── data/                      # 存放数据文件
-│   ├── raw/                   # 原始数据 (爬下来的CSV，未清洗)
-│   ├── processed/             # 清洗后的数据 (去重、去空值后)
-│   └── sample.csv             # 少量样本数据 (供队友测试代码用)
+Bilibili-Comment-Analysis/ (根目录)
+├── data/                        # 存放数据文件
+│   ├── raw/                     # 原始数据
+│   │   ├── comments.csv         # 爬取的评论数据
+│   │   └── danmaku.csv          # 爬取的弹幕数据
+│   └── processed/               # 预处理后的数据
+│       ├── comment_tokenized_dataset/ # HF格式的Tokenized数据集
+│       └── comment_loc2id.json  # 地点映射表
 │
-├── src/                       # 源代码 (Source Code)
-│   ├── crawler/               # 爬虫模块
-│   │   ├── main_crawler.py    # 爬虫主程序
-│   │   └── config.py          # 爬虫配置 (注意不要上传自己的Cookie!)
+├── src/                         # 源代码 (Source Code)
+│   ├── analysis/                # 核心分析与模型模块
+│   │   ├── model.py             # 模型推理接口
+│   │   ├── preprocess.py        # 数据清洗与特征工程
+│   │   └── trainer.py           # 模型训练脚本 (Trainer)
 │   │
-│   ├── analysis/              # 分析模块
-│   │   ├── clean_data.py      # 数据清洗脚本
-│   │   └── emotion_model.py   # 情感分析逻辑 (调用API或模型)
+│   ├── crawler/                 # 爬虫模块
+│   │   ├── config.py            # 爬虫配置 (Cookie/BV号)
+│   │   └── main_crawler.py      # 爬虫主程序
 │   │
-│   └── visualization/         # 可视化模块
-│       ├── plot_pie.py        # 画饼图的代码
-│       └── word_cloud.py      # (可选) 画词云的代码
+│   ├── utils/                   # 通用工具库
+│   │   ├── __init__.py          # 导出模块
+│   │   ├── data_loader.py       # 数据集加载器
+│   │   ├── emotion_mapper.py    # 情感标签与颜色映射
+│   │   └── time_series.py       # 时间序列计算与统计工具
+│   │
+│   └── visualization/           # 可视化模块
+│       ├── __init__.py          # 导出模块
+│       ├── distribution.py      # 情感分布可视化 (饼图/柱状图)
+│       └── timeline.py          # 时间序列可视化 (折线趋势图)
 │
-├── notebooks/                 # Jupyter Notebook (草稿本)
-│   ├── explorative_analysis.ipynb  # 队友用于尝试性分析的笔记
-│   └── demo_visualization.ipynb    # 画图的测试笔记
+├── notebooks/                   # Jupyter Notebook (实验草稿)
+│   └── explorative_analysis.ipynb # 探索性数据分析
 │
-├── docs/                      # 文档与报告
-│   ├── final_report.pdf       # 最终提交给老师的作业报告
-│   ├── presentation.pptx      # 答辩PPT
-│   └── images/                # 存放生成的图片 (用于插入README或报告)
+├── docs/                        # 文档与产出
+│   ├── images/                  # 存放生成的图表图片
+│   └── ...
 │
-├── .gitignore                 # 忽略文件列表 (非常重要！)
-├── README.md                  # 项目说明书 (门面)
-└── requirements.txt           # 依赖包列表 (环境配置)
-```
+├── DATA_FLOW_ANALYSIS.md        # 数据流向分析文档
+├── demo_emotion_distribution.py # [演示] 情感分布可视化脚本
+├── demo_emotion_timeline.py     # [演示] 时间序列分析脚本
+├── README.md                    # 项目说明书
+└── requirements.txt             # 依赖包列表
 
 ---
 
