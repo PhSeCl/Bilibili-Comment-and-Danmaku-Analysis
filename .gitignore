@@ -13,3 +13,6 @@ __pycache__/
 
 # 忽略所有临时生成的 JSON 映射文件
 *_loc2id.json
+
+# 忽略跑demo生成的png
+*.png
