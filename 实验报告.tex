@@ -34,6 +34,7 @@
     keywordstyle=\color{blue},
     commentstyle=\color{green!50!black},
     stringstyle=\color{red},
+    extendedchars=false,
 }
 
 \title{\textbf{Bilibili评论情感分析系统\\实验报告}}
@@ -118,7 +119,7 @@
 \end{figure}
 
 \subsection{目录结构}
-\begin{lstlisting}[language=bash]
+\begin{verbatim}
 Bilibili-Comment-Analysis/
 ├── data/                    # 数据目录
 │   ├── raw/                 # 原始数据
@@ -133,7 +134,7 @@ Bilibili-Comment-Analysis/
 │   └── visualization/       # 可视化模块
 ├── docs/                    # 文档
 └── requirements.txt         # 依赖列表
-\end{lstlisting}
+\end{verbatim}
 
 %================== 第三章 ==================
 \section{数据采集与预处理}
@@ -143,11 +144,11 @@ Bilibili-Comment-Analysis/
 使用Python的requests库访问Bilibili API，获取指定视频的评论数据。主要步骤：
 
 \begin{lstlisting}[language=Python]
-# 1. 获取视频信息
+# 1. Get video info
 def get_video_info(bv):
     url = f"https://www.bilibili.com/video/{bv}"
     resp = requests.get(url, headers=HEADERS)
-    # 正则提取 aid 和 cid
+    # Regex extract aid and cid
     aid = re.search(r'"aid":(\d+)', resp.text).group(1)
     cid = re.search(r'"cid":(\d+)', resp.text).group(1)
     return aid, cid
@@ -189,14 +190,14 @@ def fetch_comments(aid):
 def parse_time(time_str):
     dt = datetime.strptime(time_str, "%Y-%m-%d %H:%M:%S")
     return {
-        'hour': dt.hour,        # 小时（0-23）
-        'weekday': dt.weekday() # 星期（0-6）
+        'hour': dt.hour,        # Hour (0-23)
+        'weekday': dt.weekday() # Weekday (0-6)
     }
 \end{lstlisting}
 
 \textbf{2. 地域特征}
 \begin{lstlisting}[language=Python]
-# 地域编码映射
+# Location encoding mapping
 unique_locs = df['location'].unique()
 loc2id = {loc: idx for idx, loc in enumerate(unique_locs)}
 df['loc_id'] = df['location'].map(loc2id)
@@ -204,7 +205,7 @@ df['loc_id'] = df['location'].map(loc2id)
 
 \textbf{3. 用户特征}
 \begin{lstlisting}[language=Python]
-# Z-Score标准化
+# Z-Score standardization
 def standardize(series):
     return (series - series.mean()) / series.std()
 
@@ -344,17 +345,17 @@ import matplotlib.pyplot as plt
 
 def plot_emotion_distribution(df):
     fig, axes = plt.subplots(1, 2, figsize=(14, 6))
-    
-    # 饼图
+
+    # Pie chart
     axes[0].pie(counts, labels=labels, colors=colors, 
                 autopct='%1.1f%%')
-    axes[0].set_title('情感占比分布')
-    
-    # 柱状图
+    axes[0].set_title('Emotion Distribution')
+
+    # Bar chart
     axes[1].bar(labels, counts, color=colors)
-    axes[1].set_xlabel('情感类别')
-    axes[1].set_ylabel('评论数量')
-    
+    axes[1].set_xlabel('Emotion Category')
+    axes[1].set_ylabel('Comment Count')
+
     plt.savefig('emotion_distribution.png', dpi=300)
 \end{lstlisting}
 
@@ -373,17 +374,17 @@ def plot_emotion_distribution(df):
 from scipy.interpolate import make_interp_spline
 
 def plot_timeline(df):
-    # 按周聚合
+    # Aggregate by week
     timeline_df = df.groupby(pd.Grouper(
         key='date', freq='W'
     )).apply(calculate_sentiment_index)
-    
-    # 样条插值平滑曲线
+
+    # Spline interpolation smoothing
     spl = make_interp_spline(x, y, k=3)
     x_smooth = np.linspace(x.min(), x.max(), 300)
     y_smooth = spl(x_smooth)
-    
-    # 绘制置信区间
+
+    # Plot confidence interval
     plt.fill_between(x, ci_lower, ci_upper, alpha=0.25)
     plt.plot(x_smooth, y_smooth, linewidth=2.5)
 \end{lstlisting}
@@ -426,10 +427,10 @@ scipy>=1.10.0
 \subsection{系统使用流程}
 \subsubsection{步骤1：数据采集}
 \begin{lstlisting}[language=bash]
-# 配置Cookie和BV号
+# Configure Cookie and BV
 vim src/crawler/config.py
 
-# 运行爬虫
+# Run crawler
 python src/crawler/main_crawler.py
 \end{lstlisting}
 
@@ -464,10 +465,10 @@ Best model saved to ./trained_models/
 
 \subsubsection{步骤4：可视化分析}
 \begin{lstlisting}[language=bash]
-# 情感分布图
+# Emotion distribution plot
 python demo_emotion_distribution.py
 
-# 时间序列图
+# Time series plot
 python demo_emotion_timeline.py
 \end{lstlisting}
 
@@ -630,21 +631,21 @@ python verify_code.py
         \item 引入人工标注数据提高模型准确性
         \item 增加弹幕数据的双时间维度分析
     \end{itemize}
-    
+
     \item \textbf{模型层面}：
     \begin{itemize}
         \item 尝试大规模预训练模型（如ChatGLM、Qwen）
         \item 实现多模型集成提升准确率
         \item 添加情感强度预测（回归任务）
     \end{itemize}
-    
+
     \item \textbf{应用层面}：
     \begin{itemize}
         \item 构建Web应用提供在线服务
         \item 添加实时监控和预警功能
         \item 支持多平台（YouTube、抖音等）
     \end{itemize}
-    
+
     \item \textbf{分析层面}：
     \begin{itemize}
         \item 用户画像分析
@@ -690,31 +691,31 @@ Chen Y, Gao Q, Rau P L P. Watching a movie alone yet together: Understanding rea
 \begin{lstlisting}[language=Python]
 def main():
     args = parse_args()
-    
-    # 1. 智能读取CSV
+
+    # 1. Smart read CSV
     header_row = detect_header_row(args.input)
     df = pd.read_csv(args.input, skiprows=header_row)
-    
-    # 2. 列名标准化
+
+    # 2. Standardize columns
     new_df = standardize_columns(df, args.type)
-    
-    # 3. 数据清洗
+
+    # 3. Data cleaning
     new_df = clean_data(new_df)
-    
-    # 4. 特征工程
+
+    # 4. Feature engineering
     new_df = extract_features(new_df)
-    
+
     # 5. Tokenize
     tokenized = tokenize_dataset(new_df, args.model)
-    
-    # 6. 保存
+
+    # 6. Save
     tokenized.save_to_disk(output_path)
 \end{lstlisting}
 
 \subsection{情感分类核心函数}
 \begin{lstlisting}[language=Python]
 def predict(text):
-    """情感分类推理"""
+    """Sentiment classification inference"""
     inputs = tokenizer(text, return_tensors="pt", 
                       truncation=True, padding=True)
     with torch.no_grad():
@@ -726,13 +727,13 @@ def predict(text):
 \subsection{时间序列分析核心函数}
 \begin{lstlisting}[language=Python]
 def calculate_sentiment_index(emotion_codes):
-    """计算加权情感指数"""
+    """Calculate weighted sentiment index"""
     weights = [SENTIMENT_WEIGHTS[code] 
                for code in emotion_codes]
     return sum(weights) / len(weights)
 
 def aggregate_by_time(df, freq='W'):
-    """按时间聚合情感数据"""
+    """Aggregate sentiment data by time"""
     grouped = df.groupby(pd.Grouper(key='date', freq=freq))
     results = []
     for time_label, group in grouped:
