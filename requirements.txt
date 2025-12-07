@@ -1,2 +1,6 @@
 torch
 transformers
+datasets
+pandas
+matplotlib
+scikit-learn
