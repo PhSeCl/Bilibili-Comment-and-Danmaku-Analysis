@@ -130,7 +130,7 @@ def main():
     
     # 去除 "回复 @xxx :" (这对情感分析很重要)
     import re
-    new_df["content"] = new_df["content"].apply(lambda x: re.sub(r'^回复 @.*? :', '', x).strip())
+    new_df["content"] = new_df["content"].apply(lambda x: re.sub(r'^@.*? :', '', x).strip())
     new_df = new_df[new_df["content"] != ""] # 再次清洗可能变空的行
 
     print(f"🧹 清洗后数据量: {len(new_df)} 条")
