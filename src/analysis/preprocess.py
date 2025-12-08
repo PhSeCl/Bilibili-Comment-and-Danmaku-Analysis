@@ -16,7 +16,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 DATA_RAW_DIR = PROJECT_ROOT / "data" / "raw"
 DATA_PROCESSED_DIR = PROJECT_ROOT / "data" / "processed"
 
-DEFAULT_MODEL_ID = "bert-base-chinese"
+DEFAULT_MODEL_ID = "hfl/chinese-roberta-wwm-ext"
 DEFAULT_MAX_LEN = 128
 OUTPUT_BASE_DIR = str(DATA_PROCESSED_DIR)
 TEST_SIZE = 0.2
