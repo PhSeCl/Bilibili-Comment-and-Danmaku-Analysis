@@ -6,7 +6,10 @@ import re
 import os
 import json
 # 导入配置文件
-import config 
+try:
+    import config
+except ImportError:
+    from src.crawler import config
 
 def check_cookie():
     """检查 Cookie 是否有效"""
