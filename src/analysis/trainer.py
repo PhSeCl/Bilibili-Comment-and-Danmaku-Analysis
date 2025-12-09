@@ -3,8 +3,8 @@ import os
 import numpy as np
 from pathlib import Path
 from datasets import load_from_disk
-from transformers import AutoTokenizer, AutoModelForSequenceClassification, TrainingArguments, Trainer, DataCollatorWithPadding
-from sklearn.metrics import f1_score, accuracy_score
+from transformers import AutoTokenizer, AutoModelForSequenceClassification, TrainingArguments, Trainer, DataCollatorWithPadding, EarlyStoppingCallback
+from sklearn.metrics import f1_score, accuracy_score, classification_report
 import torch
 from torch import nn
 
@@ -51,16 +51,24 @@ raw_weights = total_samples / (NUM_LABELS * (label_counts + 1))
 # 原始权重差异太大（0.3 到 20），容易矫枉过正。开根号后差异变小（0.5 到 4.5），更温和。
 class_weights = np.sqrt(raw_weights)
 
-# 【手动干预】进一步降低负面标签的权重，提高正面标签的权重
+# 【手动干预】
+# 目标：让预测分布更接近正态分布（中间高，两头低），并减少对正面的过度偏好
 # 0:非常负面, 1:负面, 2:略微负面, 3:中立, 4:略微正面, 5:正面, 6:非常正面, 7:惊喜
-# 降低负面 (0,1,2) 的权重，防止模型过度敏感
-class_weights[0] *= 0.5
-class_weights[1] *= 0.5
-class_weights[2] *= 0.3
-# 提高正面 (5,6,7) 的权重，鼓励模型多预测正面
-class_weights[5] *= 1.5
-class_weights[6] *= 2.0
-class_weights[7] *= 1.5
+
+# 1. 稍微提高中立(3)和微负(2)、微正(4)的权重，鼓励模型往中间靠
+class_weights[2] *= 1.2
+class_weights[3] *= 1.3
+class_weights[4] *= 1.2
+
+# 2. 降低极端情感(0, 1, 6, 7)的权重，避免模型太激进
+class_weights[0] *= 0.8
+class_weights[1] *= 0.9
+class_weights[6] *= 0.9
+class_weights[7] *= 0.9
+
+# 3. 关键：降低正面(5)的权重
+# 之前是 * 1.5，导致模型疯狂预测正面。现在改为 * 0.8，抑制其倾向。
+class_weights[5] *= 0.8
 
 # 转为 Tensor 并移到 GPU (如果可用)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -87,6 +95,14 @@ data_collator = DataCollatorWithPadding(tokenizer)
 def compute_metrics(eval_pred):
     logits, labels = eval_pred
     preds = np.argmax(logits, axis=-1)
+    
+    # 打印详细的分类报告 (仅在主进程打印)
+    if trainer.is_world_process_zero():
+        print("\n" + "="*30)
+        print("📊 Classification Report:")
+        print(classification_report(labels, preds, digits=4))
+        print("="*30 + "\n")
+        
     return {
         "accuracy": accuracy_score(labels, preds),
         "macro_f1": f1_score(labels, preds, average="macro")
@@ -107,6 +123,8 @@ training_args = TrainingArguments(
     fp16=True,  # 若 GPU 支持可改为 True
     logging_steps=10,       # 每10步打印一次日志，实时监控训练状态
     save_total_limit=2,     # 只保留最近/最好的2个模型检查点，防止硬盘爆满
+    label_smoothing_factor=0.1, # 【新增】标签平滑，防止模型过度自信，有助于生成更平滑的分布
+    load_best_model_at_end=True, # 必须开启，配合 EarlyStopping
 )
 
 trainer = WeightedTrainer(
@@ -116,7 +134,8 @@ trainer = WeightedTrainer(
     eval_dataset=tokenized["validation"],
     tokenizer=tokenizer,
     data_collator=data_collator,
-    compute_metrics=compute_metrics
+    compute_metrics=compute_metrics,
+    callbacks=[EarlyStoppingCallback(early_stopping_patience=3)] # 【新增】早停机制，如果验证集指标3个epoch不提升则停止
 )
 
 trainer.train()
