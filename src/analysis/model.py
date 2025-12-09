@@ -3,11 +3,11 @@ from pathlib import Path
 import torch
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 
-MODEL_ID = "hfl/chinese-roberta-wwm-ext"  # 改成你选的模型
+MODEL_ID = "ScarletShinku/bilibili-sentiment-bert"  # 使用 Hugging Face 上的微调模型
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 tokenizer = AutoTokenizer.from_pretrained(MODEL_ID)
-model = AutoModelForSequenceClassification.from_pretrained(MODEL_ID, num_labels=8).to(device)
+model = AutoModelForSequenceClassification.from_pretrained(MODEL_ID).to(device)
 
 model.eval()
 def predict(text):
