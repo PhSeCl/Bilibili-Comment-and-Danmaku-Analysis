@@ -1,125 +1,136 @@
 import sys
-import torch
-import pandas as pd
-import numpy as np
+import os
 from pathlib import Path
-from tqdm import tqdm
+import pandas as pd
+import torch
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
+from tqdm import tqdm
+import numpy as np
+import re
 
-# 添加项目根目录到路径
+# Add project root to sys.path
+# This file is in src/analysis/, so PROJECT_ROOT is ../../
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-sys.path.insert(0, str(PROJECT_ROOT))
+sys.path.append(str(PROJECT_ROOT))
 
-from src.utils import get_emotion_label
+# Try importing visualization module
+try:
+    from src.visualization.distribution import plot_emotion_distribution, print_emotion_statistics
+except ImportError:
+    print("⚠️ Could not import visualization modules. Please ensure src is a package.")
+
+def run_prediction_pipeline(input_path=None, output_path=None, model_path=None):
+    """
+    运行预测流水线：读取数据 -> 加载模型 -> 预测 -> 保存结果 -> 返回 DataFrame
+    """
+    # Paths
+    if input_path is None:
+        input_path = PROJECT_ROOT / "data" / "raw" / "comments.csv"
+    else:
+        input_path = Path(input_path)
+        
+    if output_path is None:
+        output_path = PROJECT_ROOT / "data" / "processed" / "comments_with_predictions.csv"
+    else:
+        output_path = Path(output_path)
+
+    # Model Path Logic
+    if model_path is None:
+        LOCAL_MODEL_DIR = PROJECT_ROOT / "trained_models"
+        HF_MODEL_ID = "ScarletShinku/bilibili-sentiment-bert"
+        
+        if LOCAL_MODEL_DIR.exists():
+            model_path = LOCAL_MODEL_DIR
+            print(f"🚀 Loading model from local directory: {model_path}")
+        else:
+            model_path = HF_MODEL_ID
+            print(f"🚀 Loading model from Hugging Face: {model_path}")
+    
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"Using device: {device}")
+    
+    try:
+        tokenizer = AutoTokenizer.from_pretrained(model_path)
+        model = AutoModelForSequenceClassification.from_pretrained(model_path).to(device)
+    except Exception as e:
+        print(f"❌ Failed to load model: {e}")
+        return None
+
+    print(f"📖 Reading data from {input_path}...")
+    try:
+        # Try to find the header row if it's not the first one
+        header_row = 0
+        if input_path.exists():
+            with open(input_path, 'r', encoding='utf-8-sig') as f:
+                lines = f.readlines()
+            for i, line in enumerate(lines):
+                if line.strip() and not line.strip().startswith('#'):
+                    header_row = i
+                    break
+        
+        df = pd.read_csv(input_path, skiprows=header_row)
+        
+        # Check for content column
+        if 'content' not in df.columns and 'message' in df.columns:
+             df['content'] = df['message']
+             
+        if 'content' not in df.columns:
+            print("❌ 'content' column not found in CSV.")
+            print(f"Columns found: {df.columns.tolist()}")
+            return None
+            
+        # Clean data
+        df['content'] = df['content'].fillna("").astype(str)
+        df = df[df['content'].str.strip() != ""]
+        
+        # Remove "回复 @xxx :"
+        df["content"] = df["content"].apply(lambda x: re.sub(r'^回复 @.*? :', '', x).strip())
+        df = df[df["content"] != ""]
+        
+        print(f"📊 Total comments to analyze: {len(df)}")
+        
+    except Exception as e:
+        print(f"❌ Failed to read data: {e}")
+        return None
+
+    # Inference
+    print("🔮 Running inference...")
+    batch_size = 32
+    predictions = []
+    
+    model.eval()
+    
+    # Process in batches
+    for i in tqdm(range(0, len(df), batch_size)):
+        batch_texts = df['content'].iloc[i:i+batch_size].tolist()
+        
+        inputs = tokenizer(batch_texts, return_tensors="pt", padding=True, truncation=True, max_length=128).to(device)
+        
+        with torch.no_grad():
+            logits = model(**inputs).logits
+            preds = torch.argmax(logits, dim=-1).cpu().numpy()
+            predictions.extend(preds)
+            
+    df['labels'] = predictions
+    
+    # Save results
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    print(f"💾 Saved predictions to {output_path}")
+    df.to_csv(output_path, index=False, encoding='utf-8-sig')
+    
+    return df
 
 def main():
-    print("========================================")
-    print("   Bilibili 情感分析 - 交互式预测工具")
-    print("========================================")
-    print("请选择要预测的数据类型:")
-    print("1. comments (评论)")
-    print("2. danmaku (弹幕)")
+    df = run_prediction_pipeline()
     
-    while True:
-        choice = input("请输入您的选择 (输入 comments 或 danmaku): ").strip().lower()
-        
-        if choice in ['1', 'comments', 'comment']:
-            data_type = 'comment'
-            break
-        elif choice in ['2', 'danmaku']:
-            data_type = 'danmaku'
-            break
-        else:
-            print("❌ 输入无效，请输入 'comments' 或 'danmaku'")
-
-    # 1. 配置路径
-    RAW_DIR = PROJECT_ROOT / "data" / "raw"
-    PROCESSED_DIR = PROJECT_ROOT / "data" / "processed"
-    
-    # 根据类型选择输入文件
-    if data_type == "comment":
-        INPUT_FILE = RAW_DIR / "comments.csv"
-        OUTPUT_FILE = PROCESSED_DIR / "comments_predicted.csv"
-    else:
-        INPUT_FILE = RAW_DIR / "danmaku.csv"
-        OUTPUT_FILE = PROCESSED_DIR / "danmaku_predicted.csv"
-
-    # 2. 检查输入文件是否存在
-    if not INPUT_FILE.exists():
-        print(f"❌ 没有找到对应文件: {INPUT_FILE}")
-        print("请先运行爬虫进行爬取")
-        return
-
-    # 3. 加载模型 (从 model.py 导入)
-    print("🚀 正在加载模型 (来自 src.analysis.model)...")
-    try:
-        # 动态导入，以便在用户选择后再加载模型
-        from src.analysis.model import model, tokenizer, device
-        print(f"💻 使用设备: {device}")
-    except Exception as e:
-        print(f"❌ 加载模型失败: {e}")
-        print("请检查 src/analysis/model.py 中的配置，或确保模型文件存在。")
-        return
-
-    # 4. 加载数据
-    print(f"📂 读取数据: {INPUT_FILE} ...")
-    try:
-        # 使用 utf-8-sig 读取，跳过格式错误的行
-        df = pd.read_csv(INPUT_FILE, encoding='utf-8-sig', on_bad_lines='skip')
-    except Exception as e:
-        print(f"❌ 读取 CSV 文件失败: {e}")
-        return
-    
-    # 确保有 content 列
-    if 'content' not in df.columns:
-        print("❌ CSV 文件中缺少 'content' 列，无法进行预测。")
-        return
-
-    print(f"✅ 加载了 {len(df)} 条数据")
-
-    # 5. 定义批量预测函数
-    def predict_batch(texts, batch_size=32):
-        model.eval()
-        all_preds = []
-        
-        # 处理空值
-        texts = [str(t) if pd.notna(t) else "" for t in texts]
-        
-        for i in tqdm(range(0, len(texts), batch_size), desc="预测进度"):
-            batch_texts = texts[i : i + batch_size]
-            
-            inputs = tokenizer(
-                batch_texts, 
-                return_tensors="pt", 
-                truncation=True, 
-                padding=True, 
-                max_length=128
-            ).to(device)
-
-            with torch.no_grad():
-                logits = model(**inputs).logits
-            
-            preds = torch.argmax(logits, dim=-1).cpu().numpy()
-            all_preds.extend(preds)
-            
-        return all_preds
-
-    # 6. 执行预测
-    print("🔮 开始预测...")
-    predictions = predict_batch(df['content'].tolist(), batch_size=32)
-
-    # 7. 添加结果到 DataFrame
-    df['predicted_label_id'] = predictions
-    df['predicted_emotion'] = df['predicted_label_id'].apply(lambda x: get_emotion_label(x, use_zh=True))
-
-    # 8. 保存结果
-    PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
-    # 显式指定 mode='w' 以覆盖旧文件
-    df.to_csv(OUTPUT_FILE, index=False, encoding='utf-8-sig', mode='w')
-    
-    print(f"\n✅ 预测完成！结果已保存至: {OUTPUT_FILE}")
-    print("\n👀 预览前 5 条结果:")
-    print(df[['content', 'predicted_emotion']].head())
+    if df is not None:
+        # Visualization
+        print("🎨 Generating visualization...")
+        try:
+            plot_emotion_distribution(df, save_path=PROJECT_ROOT / "docs" / "images" / "emotion_distribution_pie_bar.png")
+            print_emotion_statistics(df)
+        except Exception as e:
+            print(f"⚠️ Visualization failed: {e}")
 
 if __name__ == "__main__":
     main()

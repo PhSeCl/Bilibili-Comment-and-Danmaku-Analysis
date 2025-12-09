@@ -12,10 +12,11 @@ sys.path.append(str(PROJECT_ROOT))
 # Import project modules
 try:
     from src.crawler.main_crawler import crawl_comments_by_bv, crawl_danmaku_by_bv, get_video_info
-    from run_prediction import run_prediction_pipeline
+    from src.analysis.run_prediction import run_prediction_pipeline
     from src.visualization.distribution import plot_emotion_distribution
     from src.visualization.timeline import plot_comment_timeline, plot_video_progress_trend
     from src.visualization.viz_geo_heatmap import plot_geo_heatmap
+    from src.visualization.wordcloud_viz import plot_sentiment_wordcloud
 except ImportError as e:
     st.error(f"Import Error: {e}")
     st.stop()
@@ -152,7 +153,7 @@ if 'analysis_result' in st.session_state:
     st.header("📊 分析结果可视化")
     
     # 动态生成标签页
-    tab_names = ["情感分布", "时间趋势"]
+    tab_names = ["情感分布", "时间趋势", "词云图"]
     has_location = 'ip_location' in df.columns
     if has_location:
         tab_names.append("地域热力图")
@@ -162,12 +163,14 @@ if 'analysis_result' in st.session_state:
     
     tab1 = tabs[0]
     tab2 = tabs[1]
+    tab_wc = tabs[2]
+    
     if has_location:
-        tab3 = tabs[2]
-        tab4 = tabs[3]
+        tab3 = tabs[3]
+        tab4 = tabs[4]
     else:
         tab3 = None
-        tab4 = tabs[2]
+        tab4 = tabs[3]
     
     with tab1:
         st.subheader("总体情感分布")
@@ -214,7 +217,13 @@ if 'analysis_result' in st.session_state:
                 try:
                     # Convert to datetime if needed
                     df[date_col] = pd.to_datetime(df[date_col], errors='coerce')
-                    fig_timeline, _ = plot_comment_timeline(df, date_column=date_col, freq='D')
+                    
+                    # 时间频率选择
+                    freq_map = {"按天": "D", "按周": "W", "按月": "M", "按小时": "H"}
+                    freq_label = st.select_slider("时间聚合粒度:", options=["按小时", "按天", "按周", "按月"], value="按天")
+                    freq = freq_map[freq_label]
+                    
+                    fig_timeline, _ = plot_comment_timeline(df, date_column=date_col, freq=freq)
                     if fig_timeline:
                         st.pyplot(fig_timeline)
                     else:
@@ -223,6 +232,31 @@ if 'analysis_result' in st.session_state:
                     st.error(f"时间序列绘图失败: {e}")
             else:
                 st.warning("数据中缺少时间列 (time/date/real_time)，无法绘制趋势图。")
+    
+    with tab_wc:
+        st.subheader("评论词云图")
+        st.info("词云图展示了评论中出现频率最高的词汇。")
+        try:
+            fig_neg, fig_pos = plot_sentiment_wordcloud(df)
+            
+            col_wc1, col_wc2 = st.columns(2)
+            with col_wc1:
+                st.markdown("#### 😡 负面评价关键词")
+                if fig_neg:
+                    st.pyplot(fig_neg)
+                else:
+                    st.warning("无法生成负面词云（可能负面评论太少）")
+                    
+            with col_wc2:
+                st.markdown("#### 😊 正面评价关键词")
+                if fig_pos:
+                    st.pyplot(fig_pos)
+                else:
+                    st.warning("无法生成正面词云（可能正面评论太少）")
+                    
+        except Exception as e:
+            st.error(f"词云生成失败: {e}")
+            st.warning("提示: 请确保已安装 jieba 和 wordcloud 库。")
             
     if tab3:
         with tab3:
