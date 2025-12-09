@@ -217,9 +217,12 @@ def save_danmaku_to_csv(danmaku_list, filename):
         return count
 
 # ==================== 封装好的调用接口 ====================
-def crawl_comments_by_bv(bv_code, max_pages=None, output_path=None):
+def crawl_comments_by_bv(bv_code, max_pages=None, output_path=None, callback=None):
     """
     根据 BV 号爬取评论的封装函数
+    
+    Args:
+        callback: 一个函数，接受 (current_page, total_pages, msg)
     """
     if max_pages is None:
         max_pages = config.MAX_COMMENT_PAGES
@@ -227,10 +230,13 @@ def crawl_comments_by_bv(bv_code, max_pages=None, output_path=None):
         output_path = config.COMMENT_SAVE_PATH
         
     print(f"🎯 [API] 开始爬取评论: {bv_code}, 页数: {max_pages}")
+    if callback:
+        callback(0, max_pages, f"准备开始爬取 {bv_code}...")
     
     # 1. 获取视频信息
     video_info = get_video_info(bv_code)
     if not video_info:
+        if callback: callback(0, max_pages, "❌ 获取视频信息失败")
         return 0
     
     oid = video_info['oid']
@@ -238,16 +244,22 @@ def crawl_comments_by_bv(bv_code, max_pages=None, output_path=None):
     # 2. 循环爬取
     total_saved = 0
     for page in range(1, max_pages + 1):
-        print(f"📄 第 {page} 页...")
+        msg = f"正在爬取第 {page}/{max_pages} 页..."
+        print(f"📄 {msg}")
+        if callback:
+            callback(page, max_pages, msg)
+            
         replies = fetch_comments(oid, page)
         if not replies:
             print("⚠️ 本页无数据或已爬完。")
+            if callback: callback(page, max_pages, "⚠️ 本页无数据或已爬完，停止爬取。")
             break
         saved_count = save_comments_to_csv(replies, filename=output_path)
         total_saved += saved_count
         time.sleep(random.uniform(1.5, 3.5))
         
     print(f"🎉 [API] 评论爬取结束！共 {total_saved} 条。")
+    if callback: callback(max_pages, max_pages, f"✅ 爬取结束！共 {total_saved} 条。")
     return total_saved
 
 def crawl_danmaku_by_bv(bv_code, max_count=None, output_path=None):

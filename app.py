@@ -15,6 +15,7 @@ try:
     from run_prediction import run_prediction_pipeline
     from src.visualization.distribution import plot_emotion_distribution
     from src.visualization.timeline import plot_comment_timeline
+    from src.visualization.viz_geo_heatmap import plot_geo_heatmap
 except ImportError as e:
     st.error(f"Import Error: {e}")
     st.stop()
@@ -35,6 +36,7 @@ st.sidebar.header("⚙️ 参数设置")
 
 bv_code = st.sidebar.text_input("BV 号 (例如 BV1xx411c7mD)", value="BV1xx411c7mD")
 max_pages = st.sidebar.number_input("爬取页数 (每页20条)", min_value=1, max_value=100, value=5)
+max_danmaku = st.sidebar.number_input("弹幕爬取条数 (0为不限制)", min_value=0, value=1000, step=100)
 
 st.sidebar.markdown("---")
 st.sidebar.info("提示：先爬取数据，再进行分析。")
@@ -44,40 +46,66 @@ col1, col2 = st.columns(2)
 
 with col1:
     st.subheader("1. 数据采集")
-    if st.button("🕷️ 开始爬取评论", use_container_width=True):
-        if not bv_code:
-            st.warning("请输入有效的 BV 号")
-        else:
-            with st.spinner(f"正在获取视频信息: {bv_code}..."):
-                video_info = get_video_info(bv_code)
-                
-            if not video_info:
-                st.error("无法获取视频信息，请检查 BV 号或网络。")
+    
+    # Tabs for Comments and Danmaku
+    crawl_tab1, crawl_tab2 = st.tabs(["📝 评论", "🚀 弹幕"])
+    
+    with crawl_tab1:
+        if st.button("🕷️ 开始爬取评论", use_container_width=True):
+            if not bv_code:
+                st.warning("请输入有效的 BV 号")
             else:
-                st.success(f"找到视频 (OID: {video_info['oid']})")
-                
-                # Progress bar
-                progress_bar = st.progress(0)
-                status_text = st.empty()
-                
-                # Define a custom output path for this session
-                raw_data_path = PROJECT_ROOT / "data" / "raw" / f"comments_{bv_code}.csv"
-                
-                # Run crawler
-                status_text.text("正在爬取评论...")
-                try:
-                    # Note: The crawler function prints to stdout, capturing progress is hard without modifying it more.
-                    # We will just run it.
-                    count = crawl_comments_by_bv(bv_code, max_pages, str(raw_data_path))
-                    progress_bar.progress(100)
-                    if count > 0:
-                        st.success(f"✅ 爬取完成！共获取 {count} 条评论。")
-                        st.session_state['current_raw_data'] = str(raw_data_path)
-                        st.session_state['current_bv'] = bv_code
-                    else:
-                        st.warning("⚠️ 未爬取到任何评论。")
-                except Exception as e:
-                    st.error(f"爬取失败: {e}")
+                with st.spinner(f"正在获取视频信息: {bv_code}..."):
+                    video_info = get_video_info(bv_code)
+                    
+                if not video_info:
+                    st.error("无法获取视频信息，请检查 BV 号或网络。")
+                else:
+                    st.success(f"找到视频 (OID: {video_info['oid']})")
+                    
+                    # Progress bar
+                    progress_bar = st.progress(0)
+                    status_text = st.empty()
+                    
+                    # Define a custom output path for this session
+                    raw_data_path = PROJECT_ROOT / "data" / "raw" / f"comments_{bv_code}.csv"
+                    
+                    # Callback function for progress
+                    def progress_callback(current, total, msg):
+                        status_text.text(msg)
+                        if total > 0:
+                            progress_bar.progress(min(current / total, 1.0))
+                    
+                    # Run crawler
+                    try:
+                        count = crawl_comments_by_bv(bv_code, max_pages, str(raw_data_path), callback=progress_callback)
+                        progress_bar.progress(100)
+                        if count > 0:
+                            st.success(f"✅ 爬取完成！共获取 {count} 条评论。")
+                            st.session_state['current_raw_data'] = str(raw_data_path)
+                            st.session_state['current_bv'] = bv_code
+                        else:
+                            st.warning("⚠️ 未爬取到任何评论。")
+                    except Exception as e:
+                        st.error(f"爬取失败: {e}")
+
+    with crawl_tab2:
+        if st.button("🚀 开始爬取弹幕", use_container_width=True):
+            if not bv_code:
+                st.warning("请输入有效的 BV 号")
+            else:
+                with st.spinner(f"正在爬取弹幕: {bv_code}..."):
+                    danmaku_path = PROJECT_ROOT / "data" / "raw" / f"danmaku_{bv_code}.csv"
+                    limit = max_danmaku if max_danmaku > 0 else None
+                    try:
+                        count = crawl_danmaku_by_bv(bv_code, limit, str(danmaku_path))
+                        if count > 0:
+                            st.success(f"✅ 弹幕爬取完成！共 {count} 条。")
+                            st.info(f"保存路径: {danmaku_path.name}")
+                        else:
+                            st.warning("⚠️ 未爬取到弹幕。")
+                    except Exception as e:
+                        st.error(f"弹幕爬取失败: {e}")
 
 with col2:
     st.subheader("2. 情感分析")
@@ -118,7 +146,7 @@ if 'analysis_result' in st.session_state:
     
     st.header("📊 分析结果可视化")
     
-    tab1, tab2, tab3 = st.tabs(["情感分布", "时间趋势", "原始数据"])
+    tab1, tab2, tab3, tab4 = st.tabs(["情感分布", "时间趋势", "地域热力图", "原始数据"])
     
     with tab1:
         st.subheader("总体情感分布")
@@ -147,6 +175,26 @@ if 'analysis_result' in st.session_state:
             st.warning("数据中缺少时间列，无法绘制趋势图。")
             
     with tab3:
+        st.subheader("评论用户地域分布")
+        if 'ip_location' in df.columns:
+            try:
+                # Use a temporary file for the HTML output
+                temp_html = PROJECT_ROOT / "docs" / "temp_heatmap.html"
+                c = plot_geo_heatmap(st.session_state.get('current_raw_data'), str(temp_html))
+                if c:
+                    # Render HTML in Streamlit
+                    import streamlit.components.v1 as components
+                    with open(temp_html, 'r', encoding='utf-8') as f:
+                        html_content = f.read()
+                    components.html(html_content, height=600)
+                else:
+                    st.warning("无法生成热力图。")
+            except Exception as e:
+                st.error(f"热力图生成失败: {e}")
+        else:
+            st.warning("数据中缺少 'ip_location' 列，无法生成地域热力图。")
+
+    with tab4:
         st.subheader("评论数据预览")
         st.dataframe(df[['content', 'labels', 'time']].head(100) if 'time' in df.columns else df[['content', 'labels']].head(100))
         

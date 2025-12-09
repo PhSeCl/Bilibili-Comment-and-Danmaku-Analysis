@@ -68,13 +68,14 @@ def plot_geo_heatmap(file_path, output_filename):
         )
     )
 
-    output_dir = 'results/figures'
-    os.makedirs(output_dir, exist_ok=True)
-    save_path = os.path.join(output_dir, output_filename)
-    
-    # 渲染为 HTML
-    c.render(save_path)
-    print(f"地图已保存至: {save_path}")
+    if output_filename:
+        output_dir = os.path.dirname(output_filename)
+        if output_dir:
+            os.makedirs(output_dir, exist_ok=True)
+        c.render(output_filename)
+        print(f"地图已保存至: {output_filename}")
+        
+    return c
 
 if __name__ == "__main__":
     current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -82,4 +83,4 @@ if __name__ == "__main__":
     data_path = os.path.join(project_root, 'data', 'processed', 'comments_predicted.csv')
     
     print("正在绘制地域热力图...")
-    plot_geo_heatmap(data_path, "comment_geo_heatmap.html")
+    plot_geo_heatmap(data_path, "results/figures/comment_geo_heatmap.html")
