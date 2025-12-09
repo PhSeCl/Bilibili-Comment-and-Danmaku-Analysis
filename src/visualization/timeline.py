@@ -37,7 +37,7 @@ def plot_comment_timeline(
     freq: str = 'W',  # 'D'=日, 'W'=周, 'M'=月
     figsize: tuple = (14, 6),
     save_path=None,
-    title: str = '评论情感时间序列分析（按周）'
+    title: str = '评论情感时间序列分析'
 ):
     """
     绘制评论的时间序列情感变化图

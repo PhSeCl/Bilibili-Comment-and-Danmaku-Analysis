@@ -16,7 +16,7 @@ try:
     from src.visualization.distribution import plot_emotion_distribution
     from src.visualization.timeline import plot_comment_timeline, plot_video_progress_trend
     from src.visualization.viz_geo_heatmap import plot_geo_heatmap
-    from src.visualization.wordcloud_viz import plot_sentiment_wordcloud
+    from src.visualization.wordcloud_viz import generate_wordcloud
 except ImportError as e:
     st.error(f"Import Error: {e}")
     st.stop()
@@ -29,7 +29,7 @@ st.set_page_config(
 )
 
 # Title
-st.title("📺 Bilibili 评论情感分析系统")
+st.title("📺 Bilibili 评论与弹幕情感分析系统")
 st.markdown("---")
 
 # Sidebar: Configuration
@@ -219,8 +219,19 @@ if 'analysis_result' in st.session_state:
                     df[date_col] = pd.to_datetime(df[date_col], errors='coerce')
                     
                     # 时间频率选择
-                    freq_map = {"按天": "D", "按周": "W", "按月": "M", "按小时": "H"}
-                    freq_label = st.select_slider("时间聚合粒度:", options=["按小时", "按天", "按周", "按月"], value="按天")
+                    freq_map = {
+                        "按小时": "H", 
+                        "按天": "D", 
+                        "每3天": "3D", 
+                        "按周": "W", 
+                        "每半月": "15D", 
+                        "按月": "M"
+                    }
+                    freq_label = st.select_slider(
+                        "时间聚合粒度:", 
+                        options=list(freq_map.keys()), 
+                        value="按天"
+                    )
                     freq = freq_map[freq_label]
                     
                     fig_timeline, _ = plot_comment_timeline(df, date_column=date_col, freq=freq)
@@ -237,22 +248,12 @@ if 'analysis_result' in st.session_state:
         st.subheader("评论词云图")
         st.info("词云图展示了评论中出现频率最高的词汇。")
         try:
-            fig_neg, fig_pos = plot_sentiment_wordcloud(df)
+            fig_wc = generate_wordcloud(df)
             
-            col_wc1, col_wc2 = st.columns(2)
-            with col_wc1:
-                st.markdown("#### 😡 负面评价关键词")
-                if fig_neg:
-                    st.pyplot(fig_neg)
-                else:
-                    st.warning("无法生成负面词云（可能负面评论太少）")
-                    
-            with col_wc2:
-                st.markdown("#### 😊 正面评价关键词")
-                if fig_pos:
-                    st.pyplot(fig_pos)
-                else:
-                    st.warning("无法生成正面词云（可能正面评论太少）")
+            if fig_wc:
+                st.pyplot(fig_wc)
+            else:
+                st.warning("无法生成词云（可能评论太少或缺少依赖）")
                     
         except Exception as e:
             st.error(f"词云生成失败: {e}")
