@@ -12,3 +12,4 @@ scipy
 requests
 tqdm
 jieba
+wordcloud

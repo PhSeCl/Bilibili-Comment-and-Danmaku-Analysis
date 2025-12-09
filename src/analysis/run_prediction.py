@@ -15,10 +15,16 @@ sys.path.append(str(PROJECT_ROOT))
 
 from src.utils import get_emotion_label
 
-def run_prediction_pipeline(input_path=None, output_path=None, model_path=None):
+def run_prediction_pipeline(input_path=None, output_path=None, model_path=None, model=None, tokenizer=None):
     """
     运行预测流水线：读取数据 -> 加载模型 -> 预测 -> 保存结果 -> 返回 DataFrame
-    此函数被 app.py 调用，请保持签名兼容。
+    
+    Args:
+        input_path: 输入 CSV 路径
+        output_path: 输出 CSV 路径
+        model_path: 模型路径 (可选)
+        model: 预加载的模型对象 (可选，推荐)
+        tokenizer: 预加载的分词器对象 (可选，推荐)
     """
     # 1. 路径处理
     if input_path is None:
@@ -33,31 +39,42 @@ def run_prediction_pipeline(input_path=None, output_path=None, model_path=None):
         output_path = Path(output_path)
 
     # 2. 模型加载逻辑
-    # 优先使用传入的 model_path，否则尝试加载本地训练模型，最后使用 HuggingFace
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"💻 Using device: {device}")
 
-    model = None
-    tokenizer = None
-
-    # 尝试从 src.analysis.model 导入 (如果未指定 model_path)
-    if model_path is None:
-        try:
-            print("🚀 Loading model from src.analysis.model configuration...")
-            from src.analysis.model import model as loaded_model, tokenizer as loaded_tokenizer
-            model = loaded_model
-            tokenizer = loaded_tokenizer
-        except Exception as e:
-            print(f"⚠️ Failed to import from src.analysis.model: {e}")
-    
-    # 如果导入失败或指定了 model_path，则手动加载
-    if model is None:
+    # 如果没有传入预加载的模型，则尝试加载
+    if model is None or tokenizer is None:
+        # 尝试从 src.analysis.model 导入 (如果未指定 model_path)
         if model_path is None:
-            LOCAL_MODEL_DIR = PROJECT_ROOT / "trained_models"
-            HF_MODEL_ID = "ScarletShinku/bilibili-sentiment-bert"
+            try:
+                print("🚀 Loading model from src.analysis.model configuration...")
+                from src.analysis.model import model as loaded_model, tokenizer as loaded_tokenizer
+                model = loaded_model
+                tokenizer = loaded_tokenizer
+            except Exception as e:
+                print(f"⚠️ Failed to import from src.analysis.model: {e}")
+        
+        # 如果导入失败或指定了 model_path，则手动加载
+        if model is None:
+            if model_path is None:
+                LOCAL_MODEL_DIR = PROJECT_ROOT / "trained_models"
+                HF_MODEL_ID = "ScarletShinku/bilibili-sentiment-bert"
+                
+                if LOCAL_MODEL_DIR.exists():
+                    model_path = LOCAL_MODEL_DIR
+                else:
+                    model_path = HF_MODEL_ID
             
-            if LOCAL_MODEL_DIR.exists():
-                model_path = LOCAL_MODEL_DIR
+            print(f"🚀 Loading model from: {model_path}")
+            try:
+                tokenizer = AutoTokenizer.from_pretrained(model_path)
+                model = AutoModelForSequenceClassification.from_pretrained(model_path)
+            except Exception as e:
+                print(f"❌ Failed to load model: {e}")
+                return None
+    
+    # 确保模型在正确的设备上
+    model = model.to(device)
                 print(f"🚀 Loading model from local directory: {model_path}")
             else:
                 model_path = HF_MODEL_ID

@@ -2,101 +2,114 @@
 
 本项目是中山大学人工智能学院数据分析实践课程的大作业，该项目的内容是基于提供的数据集进行数据分析和可视化展示。
 
+## 🚀 快速开始 (GUI)
+
+本项目提供了一个高度集成化的 Streamlit Web 界面，集成了爬虫、分析和可视化所有功能。
+
+1.  **安装依赖**:
+    ```bash
+    pip install -r requirements.txt
+    ```
+
+2.  **运行应用**:
+    ```bash
+    streamlit run app.py
+    ```
+
+3.  **使用流程**:
+    *   **数据采集**: 输入 B 站视频 BV 号，一键爬取评论或弹幕。
+    *   **情感分析**: 选择爬取的数据文件，使用 BERT 模型进行情感预测。
+    *   **可视化**: 查看情感分布、时间趋势（支持现实时间/视频进度）、地域热力图和词云图。
+
+---
+
 ## 📂 项目结构
 
 ```text
 Bilibili-Comment-Analysis/ (根目录)
+├── app.py                       # Streamlit Web 应用入口
+├── assets/                      # 静态资源 (如加载动画图片)
 ├── data/                        # 存放数据文件
-│   ├── raw/                     # 原始数据
-│   │   ├── comments.csv         # 爬取的评论数据
-│   │   └── danmaku.csv          # 爬取的弹幕数据
-│   └── processed/               # 预处理后的数据
-│       ├── comment_tokenized_dataset/ # HF格式的Tokenized数据集
-│       └── comment_loc2id.json  # 地点映射表
+│   ├── raw/                     # 原始数据 (爬虫结果)
+│   └── processed/               # 预处理与分析结果
 │
 ├── src/                         # 源代码 (Source Code)
 │   ├── analysis/                # 核心分析与模型模块
-│   │   ├── model.py             # 模型推理接口
+│   │   ├── model.py             # 模型定义与加载
 │   │   ├── preprocess.py        # 数据清洗与特征工程
-│   │   └── trainer.py           # 模型训练脚本 (Trainer)
+│   │   ├── run_prediction.py    # 预测流水线
+│   │   └── trainer.py           # 模型训练脚本
 │   │
 │   ├── crawler/                 # 爬虫模块
 │   │   ├── config.py            # 爬虫配置 (Cookie/BV号)
 │   │   └── main_crawler.py      # 爬虫主程序
 │   │
 │   ├── utils/                   # 通用工具库
-│   │   ├── __init__.py          # 导出模块
-│   │   ├── data_loader.py       # 数据集加载器
 │   │   ├── emotion_mapper.py    # 情感标签与颜色映射
 │   │   └── time_series.py       # 时间序列计算与统计工具
 │   │
 │   └── visualization/           # 可视化模块
-│       ├── __init__.py          # 导出模块
 │       ├── distribution.py      # 情感分布可视化 (饼图/柱状图)
-│       └── timeline.py          # 时间序列可视化 (折线趋势图)
-│
-├── notebooks/                   # Jupyter Notebook (实验草稿)
-│   └── explorative_analysis.ipynb # 探索性数据分析
+│       ├── timeline.py          # 时间序列可视化 (折线趋势图)
+│       ├── viz_geo_heatmap.py   # 地域热力图 (Pyecharts)
+│       ├── wordcloud_viz.py     # 词云图生成
+│       └── stopwords.txt        # 词云停用词表
 │
 ├── docs/                        # 文档与产出
-│   ├── images/                  # 存放生成的图表图片
-│   └── ...
-│
-├── DATA_FLOW_ANALYSIS.md        # 数据流向分析文档
-├── demo_emotion_distribution.py # [演示] 情感分布可视化脚本
-├── demo_emotion_timeline.py     # [演示] 时间序列分析脚本
 ├── README.md                    # 项目说明书
 └── requirements.txt             # 依赖包列表
 ```
 
 ---
 
-## 📊 功能与可视化架构
+## 📊 功能特性
 
-### 核心工作流
+### 1. 多维度数据采集
+- 支持按 **BV号** 爬取视频评论（含 IP 属地、点赞数等）。
+- 支持爬取视频弹幕（含现实时间、视频进度时间）。
+- 实时进度条显示爬取状态。
 
-```
-原始评论/弹幕数据 
-  → 数据预处理 
-  → 情感分类 
-  → 多维度可视化
-```
+### 2. 深度情感分析
+- 基于 **BERT** (hfl/chinese-roberta-wwm-ext) 微调的情感分析模型。
+- 支持 8 分类情感标签（非常正面、正面、中立、负面、非常负面等）。
+- 自动处理文本清洗（去除 HTML 标签等）。
+
+### 3. 丰富的可视化图表
+- **情感分布图**: 饼图和柱状图展示整体情感倾向。
+- **时间趋势图**:
+    - **现实时间轴**: 支持按小时/天/周/月聚合，展示舆论随日期的变化。
+    - **视频进度轴**: 展示视频播放过程中哪一秒的弹幕情感最激烈（支持置信区间）。
+- **地域热力图**:
+    - **数量模式**: 展示评论来源的地域分布。
+    - **情感模式**: 展示各省份的平均情感倾向（红=负面，蓝=正面），采用分位数算法增强对比度。
+    - *注：自动过滤无 IP 属地的数据。*
+- **词云图**: 自动提取高频关键词，支持自定义停用词表。
+
+---
+
+## 🛠️ 技术栈
+
+*   **GUI**: Streamlit
+*   **NLP**: PyTorch, Transformers (Hugging Face)
+*   **Visualization**: Matplotlib, Seaborn, Pyecharts, WordCloud
+*   **Crawler**: Requests
+
+---
 
 ### 数据输出格式规范
 
 #### 评论数据输出格式
 ```csv
-rpid,username,level,content,likes,location,date,emotion_code,emotion_label
-247633504176,拉普兰德不孤独,6,我是骑士吗？,1244,广东,2024-11-20 21:56:54,2,positive
+content,username,time,ip_location,user_level,likes,labels
+"评论内容","用户名","2024-11-20 21:56:54","广东",6,1244,2
 ```
-
-| 字段 | 说明 | 数据类型 | 备注 |
-|------|------|---------|------|
-| `rpid` | 评论 ID | int | 原始数据 |
-| `username` | 用户名 | str | 原始数据 |
-| `level` | 用户等级 | int | 原始数据 |
-| `content` | 评论内容 | str | 原始数据 |
-| `likes` | 点赞数 | int | 原始数据 |
-| `location` | 地域 IP | str | 原始数据 |
-| `date` | 发布时间 | datetime | 原始数据 |
-| `emotion_code` | 情感代码 | int | **新增** 0-7（8分类） |
-| `emotion_label` | 情感标签 | str | **新增** positive/neutral/negative 等 |
 
 #### 弹幕数据输出格式
 ```csv
-danmaku_id,user_hash,content,real_time,video_time,emotion_code,emotion_label
-1,user_abc123,弹幕内容,2024-11-20 21:56:54,01:23:45,3,neutral
+video_time,real_time,content,user_hash,labels
+123.45,"2024-11-20 21:56:54","弹幕内容","user_hash",3
 ```
 
-| 字段 | 说明 | 数据类型 | 备注 |
-|------|------|---------|------|
-| `danmaku_id` | 弹幕 ID | int | 原始数据 |
-| `user_hash` | 用户 Hash | str | 原始数据 |
-| `content` | 弹幕内容 | str | 原始数据 |
-| `real_time` | 发布现实时间 | datetime | 原始数据（可分析视频背景） |
-| `video_time` | 视频播放时间 | str (HH:MM:SS) | 原始数据（可分析视频内容） |
-| `emotion_code` | 情感代码 | int | **新增** 0-7（8分类） |
-| `emotion_label` | 情感标签 | str | **新增** positive/neutral/negative 等 |
 
 ---
 

@@ -64,6 +64,28 @@ except ImportError as e:
     st.error(f"Import Error: {e}")
     st.stop()
 
+# --- 缓存模型加载 ---
+@st.cache_resource
+def load_sentiment_model():
+    """
+    加载情感分析模型并缓存，避免重复加载
+    """
+    from transformers import AutoTokenizer, AutoModelForSequenceClassification
+    
+    LOCAL_MODEL_DIR = PROJECT_ROOT / "trained_models"
+    HF_MODEL_ID = "ScarletShinku/bilibili-sentiment-bert"
+    
+    model_path = LOCAL_MODEL_DIR if LOCAL_MODEL_DIR.exists() else HF_MODEL_ID
+    
+    print(f"🚀 [Cache] Loading model from: {model_path}")
+    try:
+        tokenizer = AutoTokenizer.from_pretrained(model_path)
+        model = AutoModelForSequenceClassification.from_pretrained(model_path)
+        return model, tokenizer
+    except Exception as e:
+        st.error(f"模型加载失败: {e}")
+        return None, None
+
 # 清除加载动画
 loading_placeholder.empty()
 
@@ -158,14 +180,25 @@ with col2:
     if st.button("🧠 开始分析", disabled=not current_raw_data, use_container_width=True):
         with st.spinner("正在加载模型并分析情感 (可能需要几秒钟)..."):
             try:
-                output_csv = PROJECT_ROOT / "data" / "processed" / f"predictions_{Path(current_raw_data).stem}.csv"
-                df = run_prediction_pipeline(input_path=current_raw_data, output_path=output_csv)
-                
-                if df is not None:
-                    st.session_state['analysis_result'] = df
-                    st.success("✅ 分析完成！")
+                # 预加载模型
+                model, tokenizer = load_sentiment_model()
+                if model is None:
+                    st.error("无法加载模型，分析终止。")
                 else:
-                    st.error("分析失败，请检查日志。")
+                    output_csv = PROJECT_ROOT / "data" / "processed" / f"predictions_{Path(current_raw_data).stem}.csv"
+                    # 传入预加载的模型
+                    df = run_prediction_pipeline(
+                        input_path=current_raw_data, 
+                        output_path=output_csv,
+                        model=model,
+                        tokenizer=tokenizer
+                    )
+                    
+                    if df is not None:
+                        st.session_state['analysis_result'] = df
+                        st.success("✅ 分析完成！")
+                    else:
+                        st.error("分析失败，请检查日志。")
             except Exception as e:
                 st.error(f"运行出错: {e}")
 
