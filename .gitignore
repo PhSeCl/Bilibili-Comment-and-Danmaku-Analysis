@@ -26,4 +26,9 @@ data/processed/*_predicted.csv
 # 忽略可视化结果
 results/
 
+# 忽略所有.csv文件
+*.csv
+
+docs\temp_heatmap.html
+
 
