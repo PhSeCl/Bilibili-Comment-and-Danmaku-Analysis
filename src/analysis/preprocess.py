@@ -25,7 +25,7 @@ RANDOM_STATE = 42
 
 def parse_args():
     parser = argparse.ArgumentParser(description="数据预处理脚本")
-    parser.add_argument("--input", type=str, default=str(DATA_RAW_DIR / "yjh_train_comments.csv"),
+    parser.add_argument("--input", type=str, default=str(DATA_RAW_DIR / "labeled_comments.csv"),
                         help="原始 CSV 文件路径")
     parser.add_argument("--type", type=str, default="comment", choices=["comment", "danmaku"], 
                         help="数据类型: comment 或 danmaku")
