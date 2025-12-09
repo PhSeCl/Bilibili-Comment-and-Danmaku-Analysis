@@ -59,15 +59,34 @@ def fetch_comments(oid, page):
         "pn": page,
         "ps": 20
     }
-    try:
-        resp = requests.get(url, params=params, headers=config.HEADERS)
-        data = resp.json()
-        if data['code'] == 0:
-            return data['data']['replies']
-        return None
-    except Exception as e:
-        print(f"❌ 获取评论第 {page} 页失败: {e}")
-        return None
+    
+    # 重试机制
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            resp = requests.get(url, params=params, headers=config.HEADERS, timeout=10) # 增加 timeout
+            data = resp.json()
+            if data['code'] == 0:
+                return data['data']['replies']
+            elif data['code'] == 12002: # 评论区已关闭或无权限
+                print(f"⚠️ 评论区可能已关闭或需要权限 (Code: 12002)")
+                return None
+            else:
+                print(f"⚠️ API 返回错误 (Code: {data['code']}): {data.get('message', 'Unknown error')}")
+                return None
+                
+        except requests.exceptions.SSLError as e:
+            print(f"⚠️ SSL 错误 (尝试 {attempt+1}/{max_retries}): {e}")
+            time.sleep(2 * (attempt + 1)) # 遇到 SSL 错误多等一会儿
+        except requests.exceptions.ConnectionError as e:
+            print(f"⚠️ 连接错误 (尝试 {attempt+1}/{max_retries}): {e}")
+            time.sleep(1 * (attempt + 1))
+        except Exception as e:
+            print(f"❌ 获取评论第 {page} 页失败: {e}")
+            return None
+            
+    print(f"❌ 第 {page} 页重试 {max_retries} 次后仍失败，跳过。")
+    return None
 
 def save_comments_to_csv(comments, filename):
     """保存评论"""
