@@ -27,8 +27,37 @@ def generate_wordcloud(df, output_path=None, max_words=200):
     text = " ".join(df['content'].astype(str).tolist())
     
     # 2. 清洗 (去除一些无意义的词)
-    # 这里可以加载停用词表，暂时简单处理
-    stop_words = set(['的', '了', '是', '我', '你', '他', '在', '就', '不', '也', '都', '吗', '啊', '吧', '呢', '回复', 'Video', 'Note'])
+    # 优先读取同目录下的 stopwords.txt
+    current_dir = Path(__file__).resolve().parent
+    stopwords_file = current_dir / "stopwords.txt"
+    
+    stop_words = set()
+    
+    if stopwords_file.exists():
+        try:
+            with open(stopwords_file, 'r', encoding='utf-8') as f:
+                stop_words = set([line.strip() for line in f if line.strip()])
+            print(f"✅ 已加载自定义停用词表: {stopwords_file} (共 {len(stop_words)} 个词)")
+        except Exception as e:
+            print(f"⚠️ 读取停用词表失败: {e}")
+    
+    # 如果没有文件或文件为空，使用默认列表作为兜底
+    if not stop_words:
+        stop_words = set([
+            '的', '了', '是', '我', '你', '他', '她', '它', '在', '就', '不', '也', '都', '吗', '啊', '吧', '呢', 
+            '回复', 'Video', 'Note', '视频', '弹幕', '评论', '内容', 'up', 'UP', 'Up', 'uP', '主', 'up主', 'UP主',
+            '我们', '你们', '他们', '这个', '那个', '就是', '还是', '只是', '但是', '而且', '因为', '所以', '如果', 
+            '虽然', '觉得', '感觉', '时候', '什么', '怎么', '哪里', '为什么', '真的', '非常', '比较', '可以', '可能', 
+            '应该', '必须', '一定', '开始', '结束', '现在', '后来', '之前', '之后', '已经', '曾经', '正在', '将要',
+            '哈哈', '哈哈哈', '哈哈哈哈', '确实', '其实', '当然', '不过', '然后', '于是', '接着', '最后', '总之',
+            '一般', '一样', '一直', '一些', '一点', '一切', '一下', '一次', '一种', '没有', '不是', '不要', '不能',
+            '看到', '知道', '出来', '起来', '下去', '过来', '过去', '回来', '回去', '为了', '关于', '对于', '根据',
+            '自己', '大家', '很多', '多少', '几个', '那些', '这些', '这样', '那样', '这么', '那么', '这种', '那种',
+            '今天', '明天', '昨天', '今年', '明年', '去年', '最近', '以前', '以后', '目前', '当时', '忽然', '突然',
+            'and', 'the', 'to', 'of', 'in', 'for', 'with', 'on', 'at', 'by', 'from', 'up', 'about', 'into', 
+            'over', 'after', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 
+            'does', 'did', 'can', 'could', 'will', 'would', 'shall', 'should', 'may', 'might', 'must'
+        ])
     
     # 3. 分词
     words = jieba.cut(text)

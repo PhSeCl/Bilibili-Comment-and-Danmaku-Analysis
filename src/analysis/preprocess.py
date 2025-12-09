@@ -133,11 +133,11 @@ def main():
     # HTML 转义字符解码 (例如 &#34; -> ")
     new_df["content"] = new_df["content"].apply(lambda x: html.unescape(x))
 
-    # 去除 "回复 @xxx :" (这对情感分析很重要)
-    # 先去掉开头 @ 提及前缀
-    new_df["content"] = new_df["content"].apply(
-        lambda x: re.sub(r'^(回复\s*)?@\S+[:：\s]*', '', str(x)).strip()
-    )
+    # (可选) 去除 "回复 @xxx :"
+    # 由于爬虫只爬取主楼层，通常不包含回复前缀，因此这里注释掉该清洗步骤
+    # new_df["content"] = new_df["content"].apply(
+    #     lambda x: re.sub(r'^(回复\s*)?@\S+[:：\s]*', '', str(x)).strip()
+    # )
     
     # 再次去除空内容 (清洗后可能变空)
     new_df = new_df[new_df["content"].str.strip() != ""].reset_index(drop=True)
