@@ -213,6 +213,70 @@ def save_danmaku_to_csv(danmaku_list, filename):
             count += 1
         return count
 
+# ==================== 封装好的调用接口 ====================
+def crawl_comments_by_bv(bv_code, max_pages=None, output_path=None):
+    """
+    根据 BV 号爬取评论的封装函数
+    """
+    if max_pages is None:
+        max_pages = config.MAX_COMMENT_PAGES
+    if output_path is None:
+        output_path = config.COMMENT_SAVE_PATH
+        
+    print(f"🎯 [API] 开始爬取评论: {bv_code}, 页数: {max_pages}")
+    
+    # 1. 获取视频信息
+    video_info = get_video_info(bv_code)
+    if not video_info:
+        return 0
+    
+    oid = video_info['oid']
+    
+    # 2. 循环爬取
+    total_saved = 0
+    for page in range(1, max_pages + 1):
+        print(f"📄 第 {page} 页...")
+        replies = fetch_comments(oid, page)
+        if not replies:
+            print("⚠️ 本页无数据或已爬完。")
+            break
+        saved_count = save_comments_to_csv(replies, filename=output_path)
+        total_saved += saved_count
+        time.sleep(random.uniform(1.5, 3.5))
+        
+    print(f"🎉 [API] 评论爬取结束！共 {total_saved} 条。")
+    return total_saved
+
+def crawl_danmaku_by_bv(bv_code, max_count=None, output_path=None):
+    """
+    根据 BV 号爬取弹幕的封装函数
+    """
+    if output_path is None:
+        output_path = config.DANMAKU_SAVE_PATH
+        
+    print(f"🎯 [API] 开始爬取弹幕: {bv_code}")
+    
+    # 1. 获取视频信息
+    video_info = get_video_info(bv_code)
+    if not video_info:
+        return 0
+    
+    cid = video_info['cid']
+    
+    # 2. 爬取 XML
+    danmaku_list = crawl_danmaku_xml(cid)
+    
+    if danmaku_list:
+        if max_count:
+            danmaku_list = danmaku_list[:max_count]
+        
+        count = save_danmaku_to_csv(danmaku_list, filename=output_path)
+        print(f"🎉 [API] 弹幕爬取结束！共 {count} 条。")
+        return count
+    else:
+        print("⚠️ [API] 未爬取到弹幕。")
+        return 0
+
 # ==================== 主程序 ====================
 if __name__ == "__main__":
     # 0. 检查 Cookie (新增功能)

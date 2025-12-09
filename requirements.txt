@@ -7,3 +7,7 @@ scikit-learn
 accelerate
 pyecharts
 seaborn
+streamlit
+scipy
+requests
+tqdm
