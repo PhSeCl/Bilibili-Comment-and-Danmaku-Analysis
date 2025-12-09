@@ -20,6 +20,10 @@ __pycache__/
 # 忽略训练好的模型文件
 trained_models/
 
-data/processed/comments_predicted.csv
+# 忽略预测结果
+data/processed/*_predicted.csv
+
+# 忽略可视化结果
+results/
 
 
