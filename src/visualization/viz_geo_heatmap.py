@@ -22,6 +22,10 @@ def plot_geo_heatmap(file_path, output_filename):
         if not isinstance(name, str): return name
         name = name.strip()
         
+        # 处理 "中国香港" -> "香港" (后续再处理后缀)
+        if name.startswith('中国') and len(name) > 2:
+            name = name.replace('中国', '')
+            
         # 直辖市
         if name in ['北京', '天津', '上海', '重庆']:
             return name + '市'
@@ -34,11 +38,10 @@ def plot_geo_heatmap(file_path, output_filename):
         # 特别行政区
         if name == '香港': return '香港特别行政区'
         if name == '澳门': return '澳门特别行政区'
+        
         # 普通省份 (如果已经是全称则不变，否则加省)
-        # 简单的判断：如果名字不长且不包含特定后缀，就加省
-        # 但要注意 '黑龙江' -> '黑龙江省'
         if len(name) <= 3 and name not in ['北京', '天津', '上海', '重庆', '香港', '澳门', '台湾']:
-             if not name.endswith('省') and not name.endswith('市'):
+             if not name.endswith('省') and not name.endswith('市') and not name.endswith('区'):
                 return name + '省'
         
         return name
@@ -48,6 +51,9 @@ def plot_geo_heatmap(file_path, output_filename):
     
     # 统计各省份评论数量
     location_counts = df['normalized_location'].value_counts()
+    
+    print("Top 10 地域 (标准化后):")
+    print(location_counts.head(10))
     
     # 准备数据格式 [(省份, 数量), ...]
     data_pair = [list(z) for z in zip(location_counts.index, location_counts.values.tolist())]
