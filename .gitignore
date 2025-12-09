@@ -20,4 +20,6 @@ __pycache__/
 # 忽略训练好的模型文件
 trained_models/
 
+data/processed/comments_predicted.csv
+
 
