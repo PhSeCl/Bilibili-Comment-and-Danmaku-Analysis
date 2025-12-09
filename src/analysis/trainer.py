@@ -18,7 +18,7 @@ OUTPUT_DIR = str(PROJECT_ROOT / "trained_models")
 # 超参（可按需调整）
 NUM_LABELS = 8
 BATCH = 32      # RTX 4060 + FP16 显存充足，由 16 提升到 32，训练更快
-EPOCHS = 10     # 增加轮数，因为加权训练通常需要更久收敛
+EPOCHS = 15     # 增加轮数，因为加权训练通常需要更久收敛
 LR = 2e-5       # 微调常用 2e-5 到 5e-5，这里选 2e-5 比较稳健
 DATA_TYPE = "comment"  # 对应 preprocess.py 生成的数据集名称
 
@@ -56,7 +56,7 @@ class_weights = np.sqrt(raw_weights)
 # 降低负面 (0,1,2) 的权重，防止模型过度敏感
 class_weights[0] *= 0.5
 class_weights[1] *= 0.5
-class_weights[2] *= 0.5
+class_weights[2] *= 0.3
 # 提高正面 (5,6,7) 的权重，鼓励模型多预测正面
 class_weights[5] *= 1.5
 class_weights[6] *= 2.0
