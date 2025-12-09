@@ -124,18 +124,23 @@ def main():
         new_df['username'] = df['user_hash'] if 'user_hash' in df.columns else "unknown"
 
     # 3. 基础清洗
+    import re
+    import html
+
     # 去除空内容
     new_df["content"] = new_df["content"].fillna("").astype(str)
-    new_df = new_df[new_df["content"].str.strip() != ""].reset_index(drop=True)
     
+    # HTML 转义字符解码 (例如 &#34; -> ")
+    new_df["content"] = new_df["content"].apply(lambda x: html.unescape(x))
+
     # 去除 "回复 @xxx :" (这对情感分析很重要)
-    import re
     # 先去掉开头 @ 提及前缀
     new_df["content"] = new_df["content"].apply(
         lambda x: re.sub(r'^(回复\s*)?@\S+[:：\s]*', '', str(x)).strip()
     )
-    # 再删除变成空的行
-    new_df = new_df[new_df["content"] != ""].reset_index(drop=True)
+    
+    # 再次去除空内容 (清洗后可能变空)
+    new_df = new_df[new_df["content"].str.strip() != ""].reset_index(drop=True)
 
     print(f"🧹 清洗后数据量: {len(new_df)} 条")
 
