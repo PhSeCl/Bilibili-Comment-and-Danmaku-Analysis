@@ -77,18 +77,41 @@ def plot_geo_heatmap(input_data, output_filename, mode='count'):
         df['sentiment_score'] = df['labels'].apply(map_sentiment)
         
         # 按省份计算平均分
-        province_stats = df.groupby('normalized_location')['sentiment_score'].mean()
+        # 先过滤掉样本数过少的省份，避免个别只有1条评论且极端的省份拉偏整体范围
+        province_counts = df['normalized_location'].value_counts()
+        valid_provinces = province_counts[province_counts >= 3].index # 至少有3条评论才参与统计
+        
+        df_filtered = df[df['normalized_location'].isin(valid_provinces)]
+        
+        if len(df_filtered) == 0:
+             # 如果过滤完没数据了，就回退到不过滤
+             df_filtered = df
+             
+        province_stats = df_filtered.groupby('normalized_location')['sentiment_score'].mean()
         
         # 动态计算范围，增强对比度
         if len(province_stats) > 0:
-            min_score = province_stats.min()
-            max_score = province_stats.max()
-            # 取绝对值最大值作为边界，保证0是中间色（黄色）
-            limit = max(abs(min_score), abs(max_score))
-            # 防止全0或极小波动导致显示异常，设置一个最小阈值，避免噪音放大
+            # 使用分位数法 (Quantile) 代替最大值法
+            # 计算所有省份得分绝对值的 90% 分位数
+            # 这意味着我们将忽略最极端的 10% 省份（让它们颜色饱和），从而让中间 90% 的省份对比度更明显
+            abs_scores = province_stats.abs()
+            limit = abs_scores.quantile(0.90)
+            
+            print(f"DEBUG: Quantile(0.9) Limit: {limit}")
+            
+            # 兜底逻辑：
+            # 1. 如果计算出的边界太小（<0.05），说明大家都很中立，强制设为 0.05 以免噪音放大
             if limit < 0.05: limit = 0.05
+            # 2. 如果计算出的边界太大（>0.5），说明数据波动本身就很剧烈，可以适当封顶在 0.5 左右，让对比更强烈
+            #    (通常情感平均分很难超过 0.5，除非样本极少)
+            if limit > 0.5: limit = 0.5
+            
         else:
             limit = 1.0
+        
+        # 确保 limit 是原生 float 类型，并保留3位小数
+        limit = round(float(limit), 3)
+        print(f"DEBUG: Final VisualMap Limit: +/- {limit}")
 
         data_pair = [list(z) for z in zip(province_stats.index, province_stats.values.round(3).tolist())]
         
