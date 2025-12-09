@@ -193,12 +193,12 @@ def crawl_danmaku_xml(cid):
 
 def save_danmaku_to_csv(danmaku_list, filename):
     os.makedirs(os.path.dirname(filename), exist_ok=True)
-    file_exists = os.path.isfile(filename)
     
-    with open(filename, mode='a', encoding='utf-8-sig', newline='') as f:
+    # 改为覆盖模式 'w'
+    with open(filename, mode='w', encoding='utf-8-sig', newline='') as f:
         writer = csv.writer(f)
-        if not file_exists:
-            writer.writerow(['video_time', 'real_time', 'content', 'user_hash'])
+        # 总是写入表头
+        writer.writerow(['video_time', 'real_time', 'content', 'user_hash'])
         
         count = 0
         for d in danmaku_list:
@@ -254,6 +254,16 @@ if __name__ == "__main__":
         else:
             max_pages = config.MAX_COMMENT_PAGES
         
+        # 在开始爬取前，尝试删除旧文件以实现覆盖
+        if os.path.exists(config.COMMENT_SAVE_PATH):
+            try:
+                os.remove(config.COMMENT_SAVE_PATH)
+                print(f"🗑️ 已删除旧文件: {config.COMMENT_SAVE_PATH}")
+            except PermissionError:
+                print(f"⚠️ 无法删除旧文件 (可能被占用): {config.COMMENT_SAVE_PATH}")
+            except Exception as e:
+                print(f"⚠️ 删除旧文件失败: {e}")
+
         print("\n--- 开始爬取评论 ---")
         total_saved = 0
         for page in range(1, max_pages + 1):

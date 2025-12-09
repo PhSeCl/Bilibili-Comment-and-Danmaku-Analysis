@@ -114,7 +114,8 @@ def main():
 
     # 8. 保存结果
     PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
-    df.to_csv(OUTPUT_FILE, index=False, encoding='utf-8-sig')
+    # 显式指定 mode='w' 以覆盖旧文件
+    df.to_csv(OUTPUT_FILE, index=False, encoding='utf-8-sig', mode='w')
     
     print(f"\n✅ 预测完成！结果已保存至: {OUTPUT_FILE}")
     print("\n👀 预览前 5 条结果:")
