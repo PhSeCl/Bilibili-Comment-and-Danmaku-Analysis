@@ -5,28 +5,16 @@ from pathlib import Path
 import pandas as pd
 import time
 
-# Add project root to sys.path
-PROJECT_ROOT = Path(__file__).resolve().parent
-sys.path.append(str(PROJECT_ROOT))
-
-# Import project modules
-try:
-    from src.crawler.main_crawler import crawl_comments_by_bv, crawl_danmaku_by_bv, get_video_info
-    from src.analysis.run_prediction import run_prediction_pipeline
-    from src.visualization.distribution import plot_emotion_distribution
-    from src.visualization.timeline import plot_comment_timeline, plot_video_progress_trend
-    from src.visualization.viz_geo_heatmap import plot_geo_heatmap
-    from src.visualization.wordcloud_viz import generate_wordcloud
-except ImportError as e:
-    st.error(f"Import Error: {e}")
-    st.stop()
-
 # Page Config
 st.set_page_config(
     page_title="Bilibili Comment Analysis",
     page_icon="📊",
     layout="wide"
 )
+
+# Add project root to sys.path
+PROJECT_ROOT = Path(__file__).resolve().parent
+sys.path.append(str(PROJECT_ROOT))
 
 # Title
 st.title("📺 Bilibili 评论与弹幕情感分析系统")
@@ -41,6 +29,18 @@ max_danmaku = st.sidebar.number_input("弹幕爬取条数 (0为不限制)", min_
 
 st.sidebar.markdown("---")
 st.sidebar.info("提示：先爬取数据，再进行分析。")
+
+# Import project modules
+try:
+    from src.crawler.main_crawler import crawl_comments_by_bv, crawl_danmaku_by_bv, get_video_info
+    from src.analysis.run_prediction import run_prediction_pipeline
+    from src.visualization.distribution import plot_emotion_distribution
+    from src.visualization.timeline import plot_comment_timeline, plot_video_progress_trend
+    from src.visualization.viz_geo_heatmap import plot_geo_heatmap
+    from src.visualization.wordcloud_viz import generate_wordcloud
+except ImportError as e:
+    st.error(f"Import Error: {e}")
+    st.stop()
 
 # Main Content
 col1, col2 = st.columns(2)
