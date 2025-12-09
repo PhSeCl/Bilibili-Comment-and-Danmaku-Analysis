@@ -15,9 +15,9 @@ OUTPUT_DIR = str(PROJECT_ROOT / "trained_models")
 
 # 超参（可按需调整）
 NUM_LABELS = 8
-BATCH = 16
-EPOCHS = 4      #训练轮数
-LR = 3e-5       #学习率
+BATCH = 32      # RTX 4060 + FP16 显存充足，由 16 提升到 32，训练更快
+EPOCHS = 5      # 稍微多练几轮，反正会自动保存效果最好的模型
+LR = 2e-5       # 微调常用 2e-5 到 5e-5，这里选 2e-5 比较稳健
 DATA_TYPE = "comment"  # 对应 preprocess.py 生成的数据集名称
 
 tokenizer = AutoTokenizer.from_pretrained(MODEL_ID)
@@ -47,7 +47,7 @@ def compute_metrics(eval_pred):
 
 training_args = TrainingArguments(
     output_dir=OUTPUT_DIR,
-    evaluation_strategy="epoch",
+    eval_strategy="epoch",
     save_strategy="epoch",
     learning_rate=LR,
     per_device_train_batch_size=BATCH,
@@ -57,7 +57,9 @@ training_args = TrainingArguments(
     load_best_model_at_end=True,
     metric_for_best_model="macro_f1",
     greater_is_better=True,
-    fp16=False  # 若 GPU 支持可改为 True
+    fp16=True,  # 若 GPU 支持可改为 True
+    logging_steps=10,       # 每10步打印一次日志，实时监控训练状态
+    save_total_limit=2,     # 只保留最近/最好的2个模型检查点，防止硬盘爆满
 )
 
 trainer = Trainer(

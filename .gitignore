@@ -17,3 +17,7 @@ __pycache__/
 # 忽略跑demo生成的png
 *.png
 
+# 忽略训练好的模型文件
+trained_models/
+
+
