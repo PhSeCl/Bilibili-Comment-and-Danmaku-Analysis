@@ -262,24 +262,45 @@ if 'analysis_result' in st.session_state:
     if tab3:
         with tab3:
             st.subheader("评论用户地域分布")
-            heatmap_mode = st.radio("显示模式:", ["评论数量", "情感倾向"], horizontal=True)
-            mode_key = 'sentiment' if heatmap_mode == "情感倾向" else 'count'
             
-            try:
-                # Use a temporary file for the HTML output
-                temp_html = PROJECT_ROOT / "docs" / "temp_heatmap.html"
-                # Pass the DataFrame directly instead of path, and pass the mode
-                c = plot_geo_heatmap(df, str(temp_html), mode=mode_key)
-                if c:
-                    # Render HTML in Streamlit
-                    import streamlit.components.v1 as components
-                    with open(temp_html, 'r', encoding='utf-8') as f:
-                        html_content = f.read()
-                    components.html(html_content, height=600)
-                else:
-                    st.warning("无法生成热力图。")
-            except Exception as e:
-                st.error(f"热力图生成失败: {e}")
+            # 统计并展示无地域信息的评论
+            total_count = len(df)
+            # 筛选出无效的地理位置 (NaN, 空字符串, 或 "未知")
+            unknown_mask = (
+                df['ip_location'].isna() | 
+                (df['ip_location'].astype(str).str.strip() == '') | 
+                (df['ip_location'] == '未知')
+            )
+            unknown_count = unknown_mask.sum()
+            
+            # 计算缺失率
+            unknown_ratio = unknown_count / total_count if total_count > 0 else 0
+            
+            # 如果缺失率过高 (例如超过 90%)，则拒绝生成
+            if unknown_ratio > 0.9:
+                st.error(f"⚠️ 无法生成热力图：数据中 {unknown_ratio:.1%} 的评论缺少IP属地信息（评论时间过于古老），有效样本过少。")
+            else:
+                if unknown_count > 0:
+                    st.info(f"ℹ️ 数据说明：共有 {total_count} 条评论，其中 {unknown_count} 条 ({unknown_ratio:.1%}) 未显示IP属地，已在地图中排除。")
+            
+                heatmap_mode = st.radio("显示模式:", ["评论数量", "情感倾向"], horizontal=True)
+                mode_key = 'sentiment' if heatmap_mode == "情感倾向" else 'count'
+                
+                try:
+                    # Use a temporary file for the HTML output
+                    temp_html = PROJECT_ROOT / "docs" / "temp_heatmap.html"
+                    # Pass the DataFrame directly instead of path, and pass the mode
+                    c = plot_geo_heatmap(df, str(temp_html), mode=mode_key)
+                    if c:
+                        # Render HTML in Streamlit
+                        import streamlit.components.v1 as components
+                        with open(temp_html, 'r', encoding='utf-8') as f:
+                            html_content = f.read()
+                        components.html(html_content, height=600)
+                    else:
+                        st.warning("无法生成热力图。")
+                except Exception as e:
+                    st.error(f"热力图生成失败: {e}")
 
     with tab4:
         st.subheader("评论数据预览")

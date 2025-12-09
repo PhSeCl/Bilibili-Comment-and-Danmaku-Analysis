@@ -24,8 +24,13 @@ def plot_geo_heatmap(input_data, output_filename, mode='count'):
         print("错误: 缺少 'ip_location' 列")
         return None
 
-    # 清洗数据：去除空值
+    # 清洗数据：去除空值、空字符串和"未知"
+    # 1. 去除 NaN
     df = df.dropna(subset=['ip_location'])
+    # 2. 去除空字符串
+    df = df[df['ip_location'].str.strip() != '']
+    # 3. 去除 "未知"
+    df = df[df['ip_location'] != '未知']
     
     # 定义省份名称标准化函数
     def normalize_province(name):
