@@ -29,6 +29,7 @@ results/
 # 忽略所有.csv文件
 *.csv
 
-docs\temp_heatmap.html
+# 忽略产生的html文件
+docs/temp_heatmap.html
 
 
