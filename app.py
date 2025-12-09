@@ -201,9 +201,16 @@ if 'analysis_result' in st.session_state:
                 st.error(f"视频进度绘图失败: {e}")
         
         else:
-            if 'date' in df.columns or 'time' in df.columns:
-                # Ensure date column exists
-                date_col = 'time' if 'time' in df.columns else 'date'
+            # 尝试查找时间列
+            date_col = None
+            if 'time' in df.columns:
+                date_col = 'time'
+            elif 'date' in df.columns:
+                date_col = 'date'
+            elif 'real_time' in df.columns:
+                date_col = 'real_time'
+                
+            if date_col:
                 try:
                     # Convert to datetime if needed
                     df[date_col] = pd.to_datetime(df[date_col], errors='coerce')
@@ -215,7 +222,7 @@ if 'analysis_result' in st.session_state:
                 except Exception as e:
                     st.error(f"时间序列绘图失败: {e}")
             else:
-                st.warning("数据中缺少时间列，无法绘制趋势图。")
+                st.warning("数据中缺少时间列 (time/date/real_time)，无法绘制趋势图。")
             
     if tab3:
         with tab3:
