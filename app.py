@@ -30,6 +30,24 @@ max_danmaku = st.sidebar.number_input("弹幕爬取条数 (0为不限制)", min_
 st.sidebar.markdown("---")
 st.sidebar.info("提示：先爬取数据，再进行分析。")
 
+# --- 启动加载动画 ---
+loading_placeholder = st.empty()
+with loading_placeholder.container():
+    # 创建三列布局让内容居中
+    l_col1, l_col2, l_col3 = st.columns([1, 2, 1])
+    with l_col2:
+        st.markdown("<br><br>", unsafe_allow_html=True) # 顶出一点距离
+        st.markdown("<h2 style='text-align: center;'>少女折寿中... 🙏</h2>", unsafe_allow_html=True)
+        
+        # 尝试加载用户自定义图片
+        image_path = PROJECT_ROOT / "assets" / "loading.png"
+        if image_path.exists():
+            st.image(str(image_path), use_container_width=True)
+        else:
+            # 如果没有图片，显示一个提示或者 emoji
+            st.markdown("<div style='text-align: center; font-size: 80px;'>🛐</div>", unsafe_allow_html=True)
+            st.caption("（提示：您可以将Q版图片命名为 loading.png 并放入 assets 文件夹中）")
+
 # Import project modules
 try:
     from src.crawler.main_crawler import crawl_comments_by_bv, crawl_danmaku_by_bv, get_video_info
@@ -38,9 +56,38 @@ try:
     from src.visualization.timeline import plot_comment_timeline, plot_video_progress_trend
     from src.visualization.viz_geo_heatmap import plot_geo_heatmap
     from src.visualization.wordcloud_viz import generate_wordcloud
+    
+    # 模拟一点延迟，让用户能看清动画 (可选，如果加载太快的话)
+    # time.sleep(1) 
+    
 except ImportError as e:
     st.error(f"Import Error: {e}")
     st.stop()
+
+# --- 缓存模型加载 ---
+@st.cache_resource
+def load_sentiment_model():
+    """
+    加载情感分析模型并缓存，避免重复加载
+    """
+    from transformers import AutoTokenizer, AutoModelForSequenceClassification
+    
+    LOCAL_MODEL_DIR = PROJECT_ROOT / "trained_models"
+    HF_MODEL_ID = "ScarletShinku/bilibili-sentiment-bert"
+    
+    model_path = LOCAL_MODEL_DIR if LOCAL_MODEL_DIR.exists() else HF_MODEL_ID
+    
+    print(f"🚀 [Cache] Loading model from: {model_path}")
+    try:
+        tokenizer = AutoTokenizer.from_pretrained(model_path)
+        model = AutoModelForSequenceClassification.from_pretrained(model_path)
+        return model, tokenizer
+    except Exception as e:
+        st.error(f"模型加载失败: {e}")
+        return None, None
+
+# 清除加载动画
+loading_placeholder.empty()
 
 # Main Content
 col1, col2 = st.columns(2)
@@ -133,14 +180,25 @@ with col2:
     if st.button("🧠 开始分析", disabled=not current_raw_data, use_container_width=True):
         with st.spinner("正在加载模型并分析情感 (可能需要几秒钟)..."):
             try:
-                output_csv = PROJECT_ROOT / "data" / "processed" / f"predictions_{Path(current_raw_data).stem}.csv"
-                df = run_prediction_pipeline(input_path=current_raw_data, output_path=output_csv)
-                
-                if df is not None:
-                    st.session_state['analysis_result'] = df
-                    st.success("✅ 分析完成！")
+                # 预加载模型
+                model, tokenizer = load_sentiment_model()
+                if model is None:
+                    st.error("无法加载模型，分析终止。")
                 else:
-                    st.error("分析失败，请检查日志。")
+                    output_csv = PROJECT_ROOT / "data" / "processed" / f"predictions_{Path(current_raw_data).stem}.csv"
+                    # 传入预加载的模型
+                    df = run_prediction_pipeline(
+                        input_path=current_raw_data, 
+                        output_path=output_csv,
+                        model=model,
+                        tokenizer=tokenizer
+                    )
+                    
+                    if df is not None:
+                        st.session_state['analysis_result'] = df
+                        st.success("✅ 分析完成！")
+                    else:
+                        st.error("分析失败，请检查日志。")
             except Exception as e:
                 st.error(f"运行出错: {e}")
 
