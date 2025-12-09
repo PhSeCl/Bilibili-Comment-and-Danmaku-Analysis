@@ -35,7 +35,6 @@ def main():
     # 1. 配置路径
     RAW_DIR = PROJECT_ROOT / "data" / "raw"
     PROCESSED_DIR = PROJECT_ROOT / "data" / "processed"
-    MODEL_PATH = PROJECT_ROOT / "trained_models"
     
     # 根据类型选择输入文件
     if data_type == "comment":
@@ -51,25 +50,18 @@ def main():
         print("请先运行爬虫进行爬取")
         return
 
-    # 3. 检查模型是否存在
-    if not MODEL_PATH.exists():
-        print(f"❌ 未找到训练好的模型: {MODEL_PATH}")
-        print("请先运行 src/analysis/trainer.py 进行训练")
-        return
-
-    # 4. 加载模型和分词器
-    print(f"🚀 正在加载模型: {MODEL_PATH} ...")
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"💻 使用设备: {device}")
-
+    # 3. 加载模型 (从 model.py 导入)
+    print("🚀 正在加载模型 (来自 src.analysis.model)...")
     try:
-        tokenizer = AutoTokenizer.from_pretrained(MODEL_PATH)
-        model = AutoModelForSequenceClassification.from_pretrained(MODEL_PATH).to(device)
+        # 动态导入，以便在用户选择后再加载模型
+        from src.analysis.model import model, tokenizer, device
+        print(f"💻 使用设备: {device}")
     except Exception as e:
         print(f"❌ 加载模型失败: {e}")
+        print("请检查 src/analysis/model.py 中的配置，或确保模型文件存在。")
         return
 
-    # 5. 加载数据
+    # 4. 加载数据
     print(f"📂 读取数据: {INPUT_FILE} ...")
     try:
         # 使用 utf-8-sig 读取，跳过格式错误的行
@@ -85,7 +77,7 @@ def main():
 
     print(f"✅ 加载了 {len(df)} 条数据")
 
-    # 6. 定义批量预测函数
+    # 5. 定义批量预测函数
     def predict_batch(texts, batch_size=32):
         model.eval()
         all_preds = []
@@ -112,15 +104,15 @@ def main():
             
         return all_preds
 
-    # 7. 执行预测
+    # 6. 执行预测
     print("🔮 开始预测...")
     predictions = predict_batch(df['content'].tolist(), batch_size=32)
 
-    # 8. 添加结果到 DataFrame
+    # 7. 添加结果到 DataFrame
     df['predicted_label_id'] = predictions
     df['predicted_emotion'] = df['predicted_label_id'].apply(lambda x: get_emotion_label(x, use_zh=True))
 
-    # 9. 保存结果
+    # 8. 保存结果
     PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
     df.to_csv(OUTPUT_FILE, index=False, encoding='utf-8-sig')
     
