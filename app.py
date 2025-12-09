@@ -151,7 +151,23 @@ if 'analysis_result' in st.session_state:
     
     st.header("📊 分析结果可视化")
     
-    tab1, tab2, tab3, tab4 = st.tabs(["情感分布", "时间趋势", "地域热力图", "原始数据"])
+    # 动态生成标签页
+    tab_names = ["情感分布", "时间趋势"]
+    has_location = 'ip_location' in df.columns
+    if has_location:
+        tab_names.append("地域热力图")
+    tab_names.append("原始数据")
+    
+    tabs = st.tabs(tab_names)
+    
+    tab1 = tabs[0]
+    tab2 = tabs[1]
+    if has_location:
+        tab3 = tabs[2]
+        tab4 = tabs[3]
+    else:
+        tab3 = None
+        tab4 = tabs[2]
     
     with tab1:
         st.subheader("总体情感分布")
@@ -179,9 +195,9 @@ if 'analysis_result' in st.session_state:
         else:
             st.warning("数据中缺少时间列，无法绘制趋势图。")
             
-    with tab3:
-        st.subheader("评论用户地域分布")
-        if 'ip_location' in df.columns:
+    if tab3:
+        with tab3:
+            st.subheader("评论用户地域分布")
             heatmap_mode = st.radio("显示模式:", ["评论数量", "情感倾向"], horizontal=True)
             mode_key = 'sentiment' if heatmap_mode == "情感倾向" else 'count'
             
@@ -200,8 +216,6 @@ if 'analysis_result' in st.session_state:
                     st.warning("无法生成热力图。")
             except Exception as e:
                 st.error(f"热力图生成失败: {e}")
-        else:
-            st.warning("数据中缺少 'ip_location' 列，无法生成地域热力图。")
 
     with tab4:
         st.subheader("评论数据预览")
