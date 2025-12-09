@@ -110,19 +110,24 @@ with col1:
 with col2:
     st.subheader("2. 情感分析")
     
-    # Check if data exists
-    current_raw_data = st.session_state.get('current_raw_data')
-    
-    # Allow manual selection if not in session
-    if not current_raw_data:
-        default_path = PROJECT_ROOT / "data" / "raw" / "comments.csv"
-        if default_path.exists():
-            st.info(f"使用默认数据: {default_path.name}")
-            current_raw_data = str(default_path)
-        else:
-            st.warning("暂无数据，请先爬取。")
+    # File Selection Logic
+    raw_data_dir = PROJECT_ROOT / "data" / "raw"
+    if raw_data_dir.exists():
+        csv_files = list(raw_data_dir.glob("*.csv"))
+        # Sort by modification time (newest first)
+        csv_files.sort(key=lambda x: x.stat().st_mtime, reverse=True)
+        file_options = {f.name: str(f) for f in csv_files}
     else:
-        st.success(f"就绪数据: {Path(current_raw_data).name}")
+        file_options = {}
+
+    selected_file_name = st.selectbox(
+        "选择要分析的数据文件:",
+        options=list(file_options.keys()),
+        index=0 if file_options else None,
+        help="从 data/raw 目录中选择已爬取的 CSV 文件"
+    )
+    
+    current_raw_data = file_options.get(selected_file_name) if selected_file_name else None
 
     if st.button("🧠 开始分析", disabled=not current_raw_data, use_container_width=True):
         with st.spinner("正在加载模型并分析情感 (可能需要几秒钟)..."):
@@ -177,10 +182,14 @@ if 'analysis_result' in st.session_state:
     with tab3:
         st.subheader("评论用户地域分布")
         if 'ip_location' in df.columns:
+            heatmap_mode = st.radio("显示模式:", ["评论数量", "情感倾向"], horizontal=True)
+            mode_key = 'sentiment' if heatmap_mode == "情感倾向" else 'count'
+            
             try:
                 # Use a temporary file for the HTML output
                 temp_html = PROJECT_ROOT / "docs" / "temp_heatmap.html"
-                c = plot_geo_heatmap(st.session_state.get('current_raw_data'), str(temp_html))
+                # Pass the DataFrame directly instead of path, and pass the mode
+                c = plot_geo_heatmap(df, str(temp_html), mode=mode_key)
                 if c:
                     # Render HTML in Streamlit
                     import streamlit.components.v1 as components

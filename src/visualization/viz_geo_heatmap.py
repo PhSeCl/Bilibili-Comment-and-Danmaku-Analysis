@@ -3,16 +3,26 @@ from pyecharts import options as opts
 from pyecharts.charts import Map
 import os
 
-def plot_geo_heatmap(file_path, output_filename):
-    if not os.path.exists(file_path):
-        print(f"错误: 文件 {file_path} 不存在。")
-        return
-
-    df = pd.read_csv(file_path)
+def plot_geo_heatmap(input_data, output_filename, mode='count'):
+    """
+    绘制地域热力图
+    
+    Args:
+        input_data: 文件路径 (str) 或 DataFrame
+        output_filename: 输出 HTML 文件路径
+        mode: 'count' (评论数量) 或 'sentiment' (情感倾向)
+    """
+    if isinstance(input_data, str):
+        if not os.path.exists(input_data):
+            print(f"错误: 文件 {input_data} 不存在。")
+            return None
+        df = pd.read_csv(input_data)
+    else:
+        df = input_data.copy()
     
     if 'ip_location' not in df.columns:
         print("错误: 缺少 'ip_location' 列")
-        return
+        return None
 
     # 清洗数据：去除空值
     df = df.dropna(subset=['ip_location'])
@@ -49,22 +59,66 @@ def plot_geo_heatmap(file_path, output_filename):
     # 应用标准化
     df['normalized_location'] = df['ip_location'].apply(normalize_province)
     
-    # 统计各省份评论数量
-    location_counts = df['normalized_location'].value_counts()
-    
-    print("Top 10 地域 (标准化后):")
-    print(location_counts.head(10))
-    
-    # 准备数据格式 [(省份, 数量), ...]
-    data_pair = [list(z) for z in zip(location_counts.index, location_counts.values.tolist())]
+    # 根据模式处理数据
+    if mode == 'sentiment' and 'labels' in df.columns:
+        # 映射情感分数: 0(负) -> -1, 1(中) -> 0, 2(正) -> 1
+        # 注意：这里假设 labels 是 0, 1, 2。如果是其他格式需要调整。
+        # 为了稳健，先尝试转换
+        def map_sentiment(label):
+            try:
+                l = int(label)
+                if l == 0: return -1
+                if l == 1: return 0
+                if l == 2: return 1
+            except:
+                return 0
+            return 0
+            
+        df['sentiment_score'] = df['labels'].apply(map_sentiment)
+        
+        # 按省份计算平均分
+        province_stats = df.groupby('normalized_location')['sentiment_score'].mean()
+        
+        # 动态计算范围，增强对比度
+        if len(province_stats) > 0:
+            min_score = province_stats.min()
+            max_score = province_stats.max()
+            # 取绝对值最大值作为边界，保证0是中间色（黄色）
+            limit = max(abs(min_score), abs(max_score))
+            # 防止全0或极小波动导致显示异常，设置一个最小阈值，避免噪音放大
+            if limit < 0.05: limit = 0.05
+        else:
+            limit = 1.0
+
+        data_pair = [list(z) for z in zip(province_stats.index, province_stats.values.round(3).tolist())]
+        
+        title = "各省份情感倾向热力图 (正值=正面, 负值=负面)"
+        series_name = "平均情感指数"
+        # 使用动态范围
+        visual_map = opts.VisualMapOpts(
+            max_=limit, 
+            min_=-limit,
+            is_piecewise=False,
+            range_color=["#D94E5D", "#EAC736", "#50A3BA"] # 红(负) -> 黄(中) -> 蓝/绿(正)
+        )
+        
+    else:
+        # 默认模式：统计数量
+        location_counts = df['normalized_location'].value_counts()
+        data_pair = [list(z) for z in zip(location_counts.index, location_counts.values.tolist())]
+        
+        title = "评论用户地域分布热力图"
+        series_name = "评论数量"
+        visual_map = opts.VisualMapOpts(max_=int(location_counts.max()) if len(location_counts) > 0 else 100, is_piecewise=False)
 
     # 创建地图
     c = (
         Map()
-        .add("评论数量", data_pair, "china")
+        .add(series_name, data_pair, "china")
         .set_global_opts(
-            title_opts=opts.TitleOpts(title="评论用户地域分布热力图"),
-            visualmap_opts=opts.VisualMapOpts(max_=int(location_counts.max()), is_piecewise=False),
+            title_opts=opts.TitleOpts(title=title),
+            visualmap_opts=visual_map,
+            tooltip_opts=opts.TooltipOpts(formatter="{b}: {c}")
         )
     )
 
