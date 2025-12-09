@@ -14,7 +14,7 @@ try:
     from src.crawler.main_crawler import crawl_comments_by_bv, crawl_danmaku_by_bv, get_video_info
     from run_prediction import run_prediction_pipeline
     from src.visualization.distribution import plot_emotion_distribution
-    from src.visualization.timeline import plot_comment_timeline
+    from src.visualization.timeline import plot_comment_timeline, plot_video_progress_trend
     from src.visualization.viz_geo_heatmap import plot_geo_heatmap
 except ImportError as e:
     st.error(f"Import Error: {e}")
@@ -179,21 +179,43 @@ if 'analysis_result' in st.session_state:
             
     with tab2:
         st.subheader("情感随时间变化")
-        if 'date' in df.columns or 'time' in df.columns:
-            # Ensure date column exists
-            date_col = 'time' if 'time' in df.columns else 'date'
-            try:
-                # Convert to datetime if needed
-                df[date_col] = pd.to_datetime(df[date_col], errors='coerce')
-                fig_timeline, _ = plot_comment_timeline(df, date_column=date_col, freq='D')
+        
+        # 判断是否为弹幕数据 (含有 video_time 列)
+        is_danmaku = 'video_time' in df.columns
+        
+        if is_danmaku:
+            timeline_mode = st.radio("时间维度:", ["现实时间 (发布日期)", "视频进度 (播放时间)"], horizontal=True)
+        else:
+            timeline_mode = "现实时间 (发布日期)"
+            
+        if timeline_mode == "视频进度 (播放时间)":
+             try:
+                # 分箱大小滑块
+                bin_size = st.slider("时间分箱大小 (秒)", min_value=10, max_value=300, value=30, step=10)
+                fig_timeline, _ = plot_video_progress_trend(df, time_column='video_time', bin_size=bin_size)
                 if fig_timeline:
                     st.pyplot(fig_timeline)
                 else:
-                    st.info("数据不足以生成时间序列图。")
-            except Exception as e:
-                st.error(f"时间序列绘图失败: {e}")
+                    st.info("数据不足以生成视频进度图。")
+             except Exception as e:
+                st.error(f"视频进度绘图失败: {e}")
+        
         else:
-            st.warning("数据中缺少时间列，无法绘制趋势图。")
+            if 'date' in df.columns or 'time' in df.columns:
+                # Ensure date column exists
+                date_col = 'time' if 'time' in df.columns else 'date'
+                try:
+                    # Convert to datetime if needed
+                    df[date_col] = pd.to_datetime(df[date_col], errors='coerce')
+                    fig_timeline, _ = plot_comment_timeline(df, date_column=date_col, freq='D')
+                    if fig_timeline:
+                        st.pyplot(fig_timeline)
+                    else:
+                        st.info("数据不足以生成时间序列图。")
+                except Exception as e:
+                    st.error(f"时间序列绘图失败: {e}")
+            else:
+                st.warning("数据中缺少时间列，无法绘制趋势图。")
             
     if tab3:
         with tab3:

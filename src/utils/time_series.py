@@ -95,6 +95,54 @@ def aggregate_by_time(
     
     return pd.DataFrame(results)
 
+def aggregate_by_numeric(
+    df: pd.DataFrame,
+    numeric_column: str,
+    emotion_column: str,
+    bin_size: float = 30.0
+) -> pd.DataFrame:
+    """
+    按数值区间分段聚合情感指数 (例如视频进度)
+    
+    Args:
+        df: DataFrame
+        numeric_column: str，数值列名 (如 video_time)
+        emotion_column: str，情感列名
+        bin_size: float，分箱大小 (默认30)
+        
+    Returns:
+        DataFrame
+    """
+    df = df.copy()
+    # 确保数值列是数字类型
+    df[numeric_column] = pd.to_numeric(df[numeric_column], errors='coerce')
+    df = df.dropna(subset=[numeric_column])
+    
+    # 创建分箱列
+    df['bin'] = (df[numeric_column] // bin_size) * bin_size
+    
+    grouped = df.groupby('bin')
+    
+    results = []
+    for bin_start, group in grouped:
+        if len(group) > 0:
+            emotion_codes = group[emotion_column].tolist()
+            sentiment_index = calculate_sentiment_index(emotion_codes)
+            
+            weights = [SENTIMENT_WEIGHTS.get(code, 0) for code in emotion_codes]
+            std = np.std(weights) if len(weights) > 1 else 0.0
+            
+            results.append({
+                'time': bin_start, # 为了兼容 plot_timeline，这里用 time 作为 x 轴
+                'sentiment_index': sentiment_index,
+                'count': len(group),
+                'std': round(std, 4),
+                'min': min(weights),
+                'max': max(weights),
+            })
+            
+    return pd.DataFrame(results).sort_values('time')
+
 def calculate_confidence_interval(
     sentiment_index: float,
     std: float,
