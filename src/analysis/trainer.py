@@ -51,6 +51,17 @@ raw_weights = total_samples / (NUM_LABELS * (label_counts + 1))
 # 原始权重差异太大（0.3 到 20），容易矫枉过正。开根号后差异变小（0.5 到 4.5），更温和。
 class_weights = np.sqrt(raw_weights)
 
+# 【手动干预】进一步降低负面标签的权重，提高正面标签的权重
+# 0:非常负面, 1:负面, 2:略微负面, 3:中立, 4:略微正面, 5:正面, 6:非常正面, 7:惊喜
+# 降低负面 (0,1,2) 的权重，防止模型过度敏感
+class_weights[0] *= 0.5
+class_weights[1] *= 0.5
+class_weights[2] *= 0.5
+# 提高正面 (5,6,7) 的权重，鼓励模型多预测正面
+class_weights[5] *= 1.5
+class_weights[6] *= 2.0
+class_weights[7] *= 1.5
+
 # 转为 Tensor 并移到 GPU (如果可用)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 class_weights = torch.tensor(class_weights, dtype=torch.float).to(device)
