@@ -5,7 +5,7 @@
 ## 📂 项目结构
 
 ```text
-Bilibili-Comment-Analysis/ (根目录)
+Bilibili-Comments-and-Danmaku-Analysis/ (根目录)
 ├── app.py                       # Streamlit Web 应用入口
 ├── assets/                      # 静态资源 (如加载动画图片)
 ├── data/                        # 存放数据文件
