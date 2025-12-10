@@ -66,18 +66,26 @@ def plot_geo_heatmap(input_data, output_filename, mode='count'):
     
     # 根据模式处理数据
     if mode == 'sentiment' and 'labels' in df.columns:
-        # 映射情感分数: 0(负) -> -1, 1(中) -> 0, 2(正) -> 1
-        # 注意：这里假设 labels 是 0, 1, 2。如果是其他格式需要调整。
-        # 为了稳健，先尝试转换
+        # 映射情感分数 (8分类)
+        # 0: Very Negative -> -3
+        # 1: Negative -> -2
+        # 2: Slightly Negative -> -1
+        # 3: Neutral -> 0
+        # 4: Slightly Positive -> 1
+        # 5: Positive -> 2
+        # 6: Very Positive -> 3
+        # 7: Surprise -> 1 (视为略微正面)
+        
         def map_sentiment(label):
             try:
                 l = int(label)
-                if l == 0: return -1
-                if l == 1: return 0
-                if l == 2: return 1
+                score_map = {
+                    0: -3, 1: -2, 2: -1, 3: 0,
+                    4: 1, 5: 2, 6: 3, 7: 1
+                }
+                return score_map.get(l, 0)
             except:
                 return 0
-            return 0
             
         df['sentiment_score'] = df['labels'].apply(map_sentiment)
         
@@ -98,18 +106,14 @@ def plot_geo_heatmap(input_data, output_filename, mode='count'):
         if len(province_stats) > 0:
             # 使用分位数法 (Quantile) 代替最大值法
             # 计算所有省份得分绝对值的 90% 分位数
-            # 这意味着我们将忽略最极端的 10% 省份（让它们颜色饱和），从而让中间 90% 的省份对比度更明显
             abs_scores = province_stats.abs()
             limit = abs_scores.quantile(0.90)
             
             print(f"DEBUG: Quantile(0.9) Limit: {limit}")
             
             # 兜底逻辑：
-            # 1. 如果计算出的边界太小（<0.05），说明大家都很中立，强制设为 0.05 以免噪音放大
-            if limit < 0.05: limit = 0.05
-            # 2. 如果计算出的边界太大（>0.5），说明数据波动本身就很剧烈，可以适当封顶在 0.5 左右，让对比更强烈
-            #    (通常情感平均分很难超过 0.5，除非样本极少)
-            if limit > 0.5: limit = 0.5
+            if limit < 0.1: limit = 0.1 # 稍微调高下限
+            if limit > 2.0: limit = 2.0 # 调高上限，因为现在分数范围是 -3 到 3
             
         else:
             limit = 1.0

@@ -4,6 +4,14 @@ import seaborn as sns
 import os
 import sys
 
+# Add project root to sys.path to allow importing src
+current_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.dirname(os.path.dirname(current_dir))
+if project_root not in sys.path:
+    sys.path.append(project_root)
+
+from src.utils.emotion_mapper import EMOTION_MAP
+
 # 设置中文字体
 plt.rcParams['font.sans-serif'] = ['SimHei', 'Microsoft YaHei', 'Arial Unicode MS']
 plt.rcParams['axes.unicode_minus'] = False
@@ -26,14 +34,9 @@ def plot_distribution(file_path, title_prefix, output_filename):
     # 统计情感分布
     emotion_counts = df['predicted_emotion'].value_counts()
     
-    # 颜色映射
-    color_map = {
-        '非常负面': '#ff4d4f', 
-        '略微负面': '#ffccc7', 
-        '中立': '#d9d9d9',     
-        '略微正面': '#b7eb8f', 
-        '非常正面': '#52c41a'  
-    }
+    # 构建颜色映射表 (中文标签 -> 颜色)
+    color_map = {info['zh_label']: info['color'] for code, info in EMOTION_MAP.items()}
+    
     colors = [color_map.get(label, '#69c0ff') for label in emotion_counts.index]
 
     # 创建画布

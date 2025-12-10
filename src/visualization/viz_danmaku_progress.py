@@ -2,7 +2,16 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import os
+import sys
 import numpy as np
+
+# Add project root to sys.path to allow importing src
+current_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.dirname(os.path.dirname(current_dir))
+if project_root not in sys.path:
+    sys.path.append(project_root)
+
+from src.utils.emotion_mapper import EMOTION_MAP
 
 # 设置中文字体
 plt.rcParams['font.sans-serif'] = ['SimHei', 'Microsoft YaHei', 'Arial Unicode MS']
@@ -33,13 +42,8 @@ def plot_video_progress(file_path, output_filename, bin_size_seconds=30):
     # 绘制折线图
     plt.figure(figsize=(14, 7))
     
-    color_map = {
-        '非常负面': '#ff4d4f', 
-        '略微负面': '#ffccc7', 
-        '中立': '#d9d9d9',     
-        '略微正面': '#b7eb8f', 
-        '非常正面': '#52c41a'  
-    }
+    # 构建颜色映射表 (中文标签 -> 颜色)
+    color_map = {info['zh_label']: info['color'] for code, info in EMOTION_MAP.items()}
     
     # 绘制每种情感的曲线
     for emotion in progress_data.columns:
