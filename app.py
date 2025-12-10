@@ -37,6 +37,19 @@ from src.crawler import config
 if user_cookie.strip():
     config.COOKIE = user_cookie.strip()
     config.HEADERS["Cookie"] = config.COOKIE
+    
+    # 新增：实时验证按钮
+    if st.sidebar.button("🔍 验证 Cookie 状态"):
+        try:
+            # 临时导入 check_cookie 以避免循环导入问题
+            from src.crawler.main_crawler import check_cookie
+            with st.spinner("正在验证..."):
+                if check_cookie():
+                    st.sidebar.success("✅ Cookie 有效！")
+                else:
+                    st.sidebar.error("❌ Cookie 无效或已过期")
+        except Exception as e:
+            st.sidebar.error(f"验证出错: {e}")
 else:
     # 如果用户未输入，使用默认 Cookie
     if hasattr(config, 'DEFAULT_COOKIE'):
@@ -119,17 +132,22 @@ with col1:
     crawl_tab1, crawl_tab2 = st.tabs(["📝 评论", "🚀 弹幕"])
     
     with crawl_tab1:
+        # 使用 placeholder 确保错误信息可以被正确清除/更新
+        msg_container = st.empty()
+        
         if st.button("🕷️ 开始爬取评论", use_container_width=True):
+            msg_container.empty() # 清除之前的消息
+            
             if not bv_code:
-                st.warning("请输入有效的 BV 号")
+                msg_container.warning("请输入有效的 BV 号")
             else:
                 with st.spinner(f"正在获取视频信息: {bv_code}..."):
                     video_info = get_video_info(bv_code)
                     
                 if not video_info:
-                    st.error("无法获取视频信息，请检查 BV 号或网络。")
+                    msg_container.error("无法获取视频信息，请检查 BV 号或网络。")
                 else:
-                    st.success(f"找到视频 (OID: {video_info['oid']})")
+                    msg_container.success(f"找到视频 (OID: {video_info['oid']})")
                     
                     # Progress bar
                     progress_bar = st.progress(0)
@@ -149,13 +167,13 @@ with col1:
                         count = crawl_comments_by_bv(bv_code, max_pages, str(raw_data_path), callback=progress_callback)
                         progress_bar.progress(100)
                         if count > 0:
-                            st.success(f"✅ 爬取完成！共获取 {count} 条评论。")
+                            msg_container.success(f"✅ 爬取完成！共获取 {count} 条评论。")
                             st.session_state['current_raw_data'] = str(raw_data_path)
                             st.session_state['current_bv'] = bv_code
                         else:
-                            st.warning("⚠️ 未爬取到任何评论。")
+                            msg_container.warning("⚠️ 未爬取到任何评论。")
                     except Exception as e:
-                        st.error(f"爬取失败: {e}")
+                        msg_container.error(f"爬取失败: {e}")
 
     with crawl_tab2:
         if st.button("🚀 开始爬取弹幕", use_container_width=True):
