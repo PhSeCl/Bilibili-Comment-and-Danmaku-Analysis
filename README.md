@@ -12,14 +12,14 @@ Bilibili-Comment-Analysis/ (根目录)
 │   ├── raw/                     # 原始数据
 │   │   ├── comments_BVxx.csv         # 爬取的评论数据
 │   │   └── danmaku_BVxx.csv          # 爬取的弹幕数据
-│   └── processed/               # 预处理后的数据
-│       ├── comment_tokenized_dataset/ # HF格式的Tokenized数据集
-│       └── comment_loc2id.json  # 地点映射表
+│   └── processed/               # 调用模型处理后的数据
+│       ├── comment_BVxx_emotion.csv  # 评论情感分类结果
+│       └── danmaku_BVxx_emotion.csv  # 弹幕情感分类结果
 │
 ├── src/                         # 源代码 (Source Code)
 │   ├── analysis/                # 核心分析与模型模块
 │   │   ├── model.py             # 模型推理接口
-│   │   ├── preprocess.py        # 数据清洗与特征工程
+│   │   ├── run_prediction.py    # 调用模型进行情感分类
 │   ├── crawler/                 # 爬虫模块
 │   │   ├── config.py            # 爬虫配置 (Cookie等)
 │   │   └── main_crawler.py      # 爬虫主程序
@@ -33,7 +33,7 @@ Bilibili-Comment-Analysis/ (根目录)
 │       ├── wordcloud_viz.py     # 词云图生成
 │       └── stopwords.txt        # 词云停用词表
 ├── docs/                        # 文档与产出
-│   ├── images/                  # 存放生成的图表图片
+│   └── images/                  # 存放生成的图表图片
 ├── README.md                    # 项目说明书
 └── requirements.txt             # 依赖包列表
 ```
@@ -106,8 +106,14 @@ video_time,real_time,content,user_hash,labels
 
 ## 注意事项
 
-- 如果Cookie失效，可能导致无法爬取数据，请及时更新。
+- 如果Cookie失效，可能导致无法爬取数据，请及时更新。建议在配置文件 `src/crawler/config.py` 中将 DEFAULT_COOKIE 替换为自己的有效 Cookie。
 - 请确保网络连接畅通，以便顺利爬取 B 站数据。
 - 爬取数据时请遵守 B 站的使用条款，避免过于频繁的请求导致封禁。
 - 分析过程中可能会消耗较多计算资源，请根据实际情况调整批处理大小等参数。
 - 如有任何问题或建议，欢迎在项目的 GitHub 页面提交 issue 或 pull request，或联系 [xuhch28@mail2.sysu.edu.cn](mailto:xuhch28@mail2.sysu.edu.cn)。
+
+## 贡献者
+
+- @Anony-mous-210
+- @ScarletShinku
+- @PhSeCl
