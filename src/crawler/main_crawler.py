@@ -24,6 +24,7 @@ def check_cookie():
         else:
             print("⚠️ Cookie 已失效或未登录！")
             print("   (这可能会导致无法获取历史弹幕，或触发风控验证码)")
+            print("   (注意：未登录状态下，评论接口通常只能获取前 3 条热门评论)")
             return False
     except Exception as e:
         print(f"⚠️ 检查 Cookie 时发生网络异常: {e}")
@@ -230,6 +231,16 @@ def crawl_comments_by_bv(bv_code, max_pages=None, output_path=None, callback=Non
         output_path = config.COMMENT_SAVE_PATH
         
     print(f"🎯 [API] 开始爬取评论: {bv_code}, 页数: {max_pages}")
+    
+    # 0. 检查 Cookie
+    if not check_cookie():
+        err_msg = "Cookie 失效或未配置！未登录状态下无法获取完整评论（仅限前3条）。请在侧边栏更新 Cookie。"
+        print(f"❌ {err_msg}")
+        if callback:
+            callback(0, max_pages, f"❌ {err_msg}")
+        # 抛出异常以中断流程并通知上层调用者
+        raise ValueError(err_msg)
+
     if callback:
         callback(0, max_pages, f"准备开始爬取 {bv_code}...")
     
@@ -295,7 +306,15 @@ def crawl_danmaku_by_bv(bv_code, max_count=None, output_path=None):
 # ==================== 主程序 ====================
 if __name__ == "__main__":
     # 0. 检查 Cookie (新增功能)
-    check_cookie()
+    if not check_cookie():
+        print("\n❌ [严重警告] Cookie 失效或未配置！")
+        print("   B站接口限制：未登录状态下只能获取 3 条热门评论。")
+        print("   请务必在 src/crawler/config.py 中更新 SESSDATA。")
+        user_choice = input("   是否继续？(y/n，默认n): ").strip().lower()
+        if user_choice != 'y':
+            print("程序已终止。")
+            exit()
+            
     print("=======================================")
 
     # 运行时输入 BV 号（可选，默认使用 config 中的值）
