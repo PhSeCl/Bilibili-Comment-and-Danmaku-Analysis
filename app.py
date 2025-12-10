@@ -18,7 +18,7 @@ sys.path.append(str(PROJECT_ROOT))
 
 # Title
 st.title("📺 Bilibili 评论与弹幕情感分析系统")
-st.markdown("项目开源地址: [GitHub](https://github.com/PhSeCl/Bilibili-Comments-and-Danmaku-Analysis)")
+st.markdown("项目开源地址: [GitHub](https://github.com/PhSeCl/Bilibili-Comment-and-Danmaku-Analysis)")
 st.markdown("---")
 
 # Sidebar: Configuration
