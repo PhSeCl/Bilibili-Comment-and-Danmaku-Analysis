@@ -18,10 +18,30 @@ sys.path.append(str(PROJECT_ROOT))
 
 # Title
 st.title("📺 Bilibili 评论与弹幕情感分析系统")
+st.markdown("项目开源地址: [GitHub](https://github.com/PhSeCl/Bilibili-Comments-and-Danmaku-Analysis)")
 st.markdown("---")
 
 # Sidebar: Configuration
 st.sidebar.header("⚙️ 参数设置")
+
+# Cookie 输入框
+user_cookie = st.sidebar.text_area(
+    "B站 Cookie (可选，用于爬取更多数据)", 
+    value="",
+    placeholder="在此可粘贴您的 Cookie，留空则使用默认测试 Cookie",
+    help="登录 B 站后，按 F12 打开控制台，输入 document.cookie 并复制结果。"
+)
+
+# 更新 config 中的 Cookie
+from src.crawler import config
+if user_cookie.strip():
+    config.COOKIE = user_cookie.strip()
+    config.HEADERS["Cookie"] = config.COOKIE
+else:
+    # 如果用户未输入，使用默认 Cookie
+    if hasattr(config, 'DEFAULT_COOKIE'):
+        config.COOKIE = config.DEFAULT_COOKIE
+        config.HEADERS["Cookie"] = config.COOKIE
 
 bv_code = st.sidebar.text_input("BV 号 (例如 BV1xx411c7mD)", value="BV1xx411c7mD")
 max_pages = st.sidebar.number_input("爬取页数 (每页20条)", min_value=1, max_value=100, value=5)
