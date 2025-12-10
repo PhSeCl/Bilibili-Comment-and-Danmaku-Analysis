@@ -77,12 +77,7 @@ video_time,real_time,content,user_hash,labels
 
 ## 使用说明
 
-- 克隆项目到本地：
-
-    ```bash
-    git clone https://github.com/PhSeCl/Bilibili-Comment-and-Danmaku-Analysis.git
-    cd Bilibili-Comment-and-Danmaku-Analysis
-    ```
+- 选择Releases进行下载，下载到本地后解压。
 
 - 安装依赖包：
 
