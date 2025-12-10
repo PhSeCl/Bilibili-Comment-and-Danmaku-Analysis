@@ -29,8 +29,13 @@ user_cookie = st.sidebar.text_area(
     "B站 Cookie (可选，用于爬取更多数据)", 
     value="",
     placeholder="在此可粘贴您的 Cookie，留空则使用默认测试 Cookie",
-    help="登录 B 站后，按 F12 打开控制台，输入 document.cookie 并复制结果。"
+    help="""
+    1. 临时使用：直接在此处粘贴。
+    2. 永久生效：修改 src/crawler/config.py 中的 DEFAULT_COOKIE 变量。
+    3. 获取方法：登录 B 站 -> F12 -> 控制台 -> 输入 document.cookie
+    """
 )
+st.sidebar.caption("💡 提示：如需永久修改默认 Cookie，请编辑 `src/crawler/config.py` 文件。")
 
 # 更新 config 中的 Cookie
 from src.crawler import config
