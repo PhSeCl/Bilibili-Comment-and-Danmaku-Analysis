@@ -30,7 +30,7 @@ PROJECT_ROOT = get_project_root()
 OUTPUT_DIR = PROJECT_ROOT / "docs" / "images"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-def plot_emotion_distribution(df, emotion_col='labels', figsize=(14, 6), save_path=None, use_zh=True):
+def plot_emotion_distribution(df, emotion_col='labels', figsize=(14, 6), save_path=None, use_zh=True, title='情感分布分析'):
     """
     绘制饼图 + 柱状图展示情感分布
     
@@ -40,6 +40,7 @@ def plot_emotion_distribution(df, emotion_col='labels', figsize=(14, 6), save_pa
         figsize: tuple，图片大小
         save_path: str，保存路径（可选）
         use_zh: bool，是否使用中文标签
+        title: str，图表标题
         
     Returns:
         fig, axes：matplotlib 图表对象
@@ -56,7 +57,7 @@ def plot_emotion_distribution(df, emotion_col='labels', figsize=(14, 6), save_pa
     
     # 创建图表
     fig, axes = plt.subplots(1, 2, figsize=figsize)
-    fig.suptitle('评论情感分布分析', fontsize=16, fontweight='bold', y=1.00)
+    fig.suptitle(title, fontsize=16, fontweight='bold', y=1.00)
     
     # ========== 左侧：饼图 ==========
     ax_pie = axes[0]

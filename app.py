@@ -273,19 +273,20 @@ if 'analysis_result' in st.session_state:
         tab3 = None
         tab4 = tabs[3]
     
+    # 判断数据类型
+    is_danmaku = 'video_time' in df.columns
+    data_type_name = "弹幕" if is_danmaku else "评论"
+
     with tab1:
         st.subheader("总体情感分布")
         try:
-            fig, _ = plot_emotion_distribution(df, save_path=None)
+            fig, _ = plot_emotion_distribution(df, save_path=None, title=f'{data_type_name}情感分布分析')
             st.pyplot(fig)
         except Exception as e:
             st.error(f"绘图失败: {e}")
             
     with tab2:
         st.subheader("情感随时间变化")
-        
-        # 判断是否为弹幕数据 (含有 video_time 列)
-        is_danmaku = 'video_time' in df.columns
         
         if is_danmaku:
             timeline_mode = st.radio("时间维度:", ["现实时间 (发布日期)", "视频进度 (播放时间)"], horizontal=True)
@@ -296,7 +297,7 @@ if 'analysis_result' in st.session_state:
              try:
                 # 分箱大小滑块
                 bin_size = st.slider("时间分箱大小 (秒)", min_value=10, max_value=300, value=30, step=10)
-                fig_timeline, _ = plot_video_progress_trend(df, time_column='video_time', bin_size=bin_size)
+                fig_timeline, _ = plot_video_progress_trend(df, time_column='video_time', bin_size=bin_size, title=f'{data_type_name}情感随视频进度变化')
                 if fig_timeline:
                     st.pyplot(fig_timeline)
                 else:
@@ -335,7 +336,7 @@ if 'analysis_result' in st.session_state:
                     )
                     freq = freq_map[freq_label]
                     
-                    fig_timeline, _ = plot_comment_timeline(df, date_column=date_col, freq=freq)
+                    fig_timeline, _ = plot_comment_timeline(df, date_column=date_col, freq=freq, title=f'{data_type_name}情感时间序列分析')
                     if fig_timeline:
                         st.pyplot(fig_timeline)
                     else:
@@ -346,8 +347,8 @@ if 'analysis_result' in st.session_state:
                 st.warning("数据中缺少时间列 (time/date/real_time)，无法绘制趋势图。")
     
     with tab_wc:
-        st.subheader("评论词云图")
-        st.info("词云图展示了评论中出现频率最高的词汇。")
+        st.subheader(f"{data_type_name}词云图")
+        st.info(f"词云图展示了{data_type_name}中出现频率最高的词汇。")
         try:
             # 保存到 docs/images
             wc_save_path = PROJECT_ROOT / "docs" / "images" / "wordcloud.png"
@@ -365,7 +366,7 @@ if 'analysis_result' in st.session_state:
             
     if tab3:
         with tab3:
-            st.subheader("评论用户地域分布")
+            st.subheader(f"{data_type_name}用户地域分布")
             
             # 统计并展示无地域信息的评论
             total_count = len(df)
@@ -382,12 +383,12 @@ if 'analysis_result' in st.session_state:
             
             # 如果缺失率过高 (例如超过 90%)，则拒绝生成
             if unknown_ratio > 0.9:
-                st.error(f"⚠️ 无法生成热力图：数据中 {unknown_ratio:.1%} 的评论缺少IP属地信息（评论时间过于古老），有效样本过少。")
+                st.error(f"⚠️ 无法生成热力图：数据中 {unknown_ratio:.1%} 的{data_type_name}缺少IP属地信息（{data_type_name}时间过于古老），有效样本过少。")
             else:
                 if unknown_count > 0:
-                    st.info(f"ℹ️ 数据说明：共有 {total_count} 条评论，其中 {unknown_count} 条 ({unknown_ratio:.1%}) 未显示IP属地，已在地图中排除。")
+                    st.info(f"ℹ️ 数据说明：共有 {total_count} 条{data_type_name}，其中 {unknown_count} 条 ({unknown_ratio:.1%}) 未显示IP属地，已在地图中排除。")
             
-                heatmap_mode = st.radio("显示模式:", ["评论数量", "情感倾向"], horizontal=True)
+                heatmap_mode = st.radio("显示模式:", [f"{data_type_name}数量", "情感倾向"], horizontal=True)
                 mode_key = 'sentiment' if heatmap_mode == "情感倾向" else 'count'
                 
                 try:
@@ -407,7 +408,7 @@ if 'analysis_result' in st.session_state:
                     st.error(f"热力图生成失败: {e}")
 
     with tab4:
-        st.subheader("评论数据预览")
+        st.subheader(f"{data_type_name}数据预览")
         st.dataframe(df[['content', 'labels', 'time']].head(100) if 'time' in df.columns else df[['content', 'labels']].head(100))
         
         csv = df.to_csv(index=False).encode('utf-8-sig')
