@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import pandas as pd
 import os
+import sys
 from pathlib import Path
 import re
 
@@ -105,3 +106,19 @@ def generate_wordcloud(df, output_path=None, max_words=200):
         print(f"词云已保存至: {output_path}")
         
     return fig
+
+if __name__ == "__main__":
+    # 独立运行测试
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    project_root = os.path.dirname(os.path.dirname(current_dir))
+    
+    data_path = os.path.join(project_root, 'data', 'processed', 'comments_predicted.csv')
+    output_path = os.path.join(project_root, 'docs', 'images', 'wordcloud.png')
+    
+    if os.path.exists(data_path):
+        print(f"正在读取数据: {data_path}")
+        df = pd.read_csv(data_path)
+        print("正在生成词云...")
+        generate_wordcloud(df, output_path=output_path)
+    else:
+        print(f"错误: 数据文件不存在 {data_path}")

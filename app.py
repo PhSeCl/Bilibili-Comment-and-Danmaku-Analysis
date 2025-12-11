@@ -349,10 +349,13 @@ if 'analysis_result' in st.session_state:
         st.subheader("评论词云图")
         st.info("词云图展示了评论中出现频率最高的词汇。")
         try:
-            fig_wc = generate_wordcloud(df)
+            # 保存到 docs/images
+            wc_save_path = PROJECT_ROOT / "docs" / "images" / "wordcloud.png"
+            fig_wc = generate_wordcloud(df, output_path=str(wc_save_path))
             
             if fig_wc:
                 st.pyplot(fig_wc)
+                st.success(f"词云图已保存至: {wc_save_path}")
             else:
                 st.warning("无法生成词云（可能评论太少或缺少依赖）")
                     
