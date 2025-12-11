@@ -105,16 +105,3 @@ def generate_wordcloud(df, output_path=None, max_words=200):
         print(f"词云已保存至: {output_path}")
         
     return fig
-
-def plot_sentiment_wordcloud(df):
-    """
-    分别生成正面和负面词云
-    """
-    # 假设 labels: 0-2 负面, 3 中立, 4-7 正面
-    neg_df = df[df['labels'] <= 2]
-    pos_df = df[df['labels'] >= 4]
-    
-    fig_neg = generate_wordcloud(neg_df)
-    fig_pos = generate_wordcloud(pos_df)
-    
-    return fig_neg, fig_pos
