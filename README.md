@@ -79,7 +79,7 @@ video_time,real_time,content,user_hash,labels
 
 - 选择Releases进行下载，下载到本地后解压。
 
-- 安装依赖包：
+- 安装依赖包：双击对应bat文件，或在命令行中运行：
 
     ```bash
     pip install -r requirements.txt
@@ -89,7 +89,7 @@ video_time,real_time,content,user_hash,labels
 
     在 `src/crawler/config.py` 中设置 B 站 Cookie 。(Cookie 获取方法请参考网络教程)
 
-- 运行 GUI 界面：
+- 运行 GUI 界面：双击对应bat文件，或在命令行中运行：
 
     ```bash
     streamlit run app.py
