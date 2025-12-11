@@ -32,7 +32,7 @@ user_cookie = st.sidebar.text_area(
     help="""
     1. 临时使用：直接在此处粘贴。
     2. 永久生效：修改 src/crawler/config.py 中的 DEFAULT_COOKIE 变量。
-    3. 获取方法：登录 B 站 -> F12 -> 控制台 -> 上方筛选栏中输入 nav -> 刷新界面 -> 点击打开 nav.js -> 在请求标头中找到 Cookie 字段。
+    3. 获取方法：登录 B 站 -> F12打开开发者页面 -> 文档 (doc) -> 刷新网页 -> 点击 www.bilibili.com -> 在请求标头中找到 Cookie 字段。
     """
 )
 st.sidebar.caption("💡 提示：如需永久修改默认 Cookie，请编辑 `src/crawler/config.py` 文件。")
